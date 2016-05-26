@@ -112,15 +112,28 @@ def loss(logits, targets):
             `[batch_size, num_classes]` and some kind of float.
 
     Returns:
-        a tensor with the cross entropy.
+        a tensor with the cross entropy, averaged over the instances in the
+           batch.
     """
-    if targets.get_shape()[1].value == 1:
-        return tf.nn.sparse_softmax_cross_entropy_with_logits(
+    if len(targets.get_shape()) == 1:
+        batch_losses = tf.nn.sparse_softmax_cross_entropy_with_logits(
             logits, targets)
-    return tf.nn.softmax_cross_entropy_with_logits(
-        logits, targets)
+    else:
+        batch_losses = tf.nn.softmax_cross_entropy_with_logits(
+            logits, targets)
+    return tf.reduce_mean(batch_losses)
 
 
 def train(loss, learning_rate):
     """Gets an op to minimise the given loss"""
-    return tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)
+    opt = tf.train.GradientDescentOptimizer(learning_rate)
+    tvars = tf.trainable_variables()
+    grads = opt.compute_gradients(loss, tvars)
+    grads, norm = tf.clip_by_global_norm([grad for grad, _ in grads], 1)
+    return opt.apply_gradients(zip(grads, tvars)), norm
+
+
+def accuracy(logits, targets):
+    """Gets an op that tells you how accurate you are over a batch"""
+    # we are just taking arg max so should be no need to softmax?
+    return tf.reduce_mean(tf.cast(tf.nn.in_top_k(logits, targets, 1), tf.float32))
