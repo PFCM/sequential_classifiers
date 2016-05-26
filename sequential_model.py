@@ -7,8 +7,6 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 
-import mrnn
-
 
 def _recurrent_inference(inputs, rnn_cell):
     """gets the forward pass of the recurrent part of the model.
@@ -53,22 +51,76 @@ def _feedforward_inference(inputs, num_classes, scope=None):
         return logits
 
 
-def inference(inputs, cell='lstm'):
+def inference(inputs, num_layers,
+              cell, num_classes,
+              do_projection=True,
+              classify_state=False):
     """Gets the forward step of the model.
+
+    Optionally adds a projection layer, which is just a matmul
+    (linear layer with no bias).
 
     Args:
         inputs: a list of input placeholders, each of shape
             `[batch_size, num_inputs]`
-        cell: what cell to use
+        width: the width (number of hidden units) of the recurrent
+            layers.
+        num_layers: how many recurrent layers.
+        cell: the raw cell for a single layer. If do_projection is
+            false then it's up to you to make sure the sizes match up
+            (ie. set num_layers to 1 and make the MultiRNNCell by hand).
+        num_classes: how many classes we are going to try and classify it
+            into.
+        do_projection: whether or not to add a projection layer.
+        classify_state: whether the input to the classification part
+            is the final state of the model or the final output.
+
+        Returns:
+            triple of (initial_state, final_state, logits). The first and
+                last states of the network are returned because these variables
+                can be essential for training (especially on longer sequences
+                where we have to significantly truncate the backprop through
+                time). The last one is the raw classifier output, to actually
+                predict probabilities, softmax this.
+
     """
-    pass
+    in_size = inputs[0].get_shape()[1].value
+    if num_layers > 1:
+        cell = tf.nn.rnn_cell.MultiRNNCell([cell] * num_layers)
+    if do_projection:
+        with tf.variable_scope('input_projection'):
+            proj = tf.get_variable('projection', [in_size, cell.output_size])
+            inputs = [tf.matmul(input_, proj) for input_ in inputs]
+
+    initial_state, outputs, final_state = _recurrent_inference(inputs, cell)
+    if classify_state:
+        logits = _feedforward_inference(final_state, num_classes)
+    else:
+        logits = _feedforward_inference(outputs[-1], num_classes)
+    return initial_state, final_state, logits
 
 
 def loss(logits, targets):
-    """Gets some kind of loss from the outputs of the classifier"""
-    pass
+    """Gets some kind of loss from the outputs of the classifier.
+    Specifically, the softmax cross entropy. `targets` can be single ints
+    (which should be a bit quicker) or actual distributions (in which case
+    multiple labels are supported).
+
+    Args:
+        logits: the raw (unscaled) logits `[batch_size, num_classes]`
+        targets: either `[batch_size, 1]` and dtype int64, otherwise
+            `[batch_size, num_classes]` and some kind of float.
+
+    Returns:
+        a tensor with the cross entropy.
+    """
+    if targets.get_shape()[1].value == 1:
+        return tf.nn.sparse_softmax_cross_entropy_with_logits(
+            logits, targets)
+    return tf.nn.softmax_cross_entropy_with_logits(
+        logits, targets)
 
 
-def train(loss):
+def train(loss, learning_rate):
     """Gets an op to minimise the given loss"""
-    pass
+    return tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)
