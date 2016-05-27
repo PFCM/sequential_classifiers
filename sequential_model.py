@@ -124,12 +124,12 @@ def loss(logits, targets):
     return tf.reduce_mean(batch_losses)
 
 
-def train(loss, learning_rate):
+def train(loss, learning_rate, grad_norm=10.0):
     """Gets an op to minimise the given loss"""
     opt = tf.train.GradientDescentOptimizer(learning_rate)
     tvars = tf.trainable_variables()
     grads = opt.compute_gradients(loss, tvars)
-    grads, norm = tf.clip_by_global_norm([grad for grad, _ in grads], 1)
+    grads, norm = tf.clip_by_global_norm([grad for grad, _ in grads], 10)
     return opt.apply_gradients(zip(grads, tvars)), norm
 
 
