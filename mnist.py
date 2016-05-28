@@ -184,7 +184,7 @@ def main(_):
                               tf.no_op(), accuracy, None)
     print('{:^40}'.format(test_accuracy))
     with open(test_results, 'w') as f:
-        f.write(test_accuracy)
+        f.write('{}'.format(test_accuracy))
 
 if __name__ == '__main__':
     tf.app.run()
