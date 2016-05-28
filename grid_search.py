@@ -28,21 +28,21 @@ args = [
 cells = [
     #'lstm',
     #'vanilla',
-    'irnn',
+    #'irnn',
     'cp-relu',
     'cp-tanh',
     'tt-relu',
     'tt-tanh'
 ]
 
-ranks = ['10', '50']
+ranks = ['10', '50', '75']
 
 twidth = shutil.get_terminal_size((80, 20)).columns
 
 for cell, rank in itertools.product(cells, ranks):
     if cell in ['lstm', 'vanilla', 'irnn'] \
        and rank != ranks[0]:
-        break
+        continue
     unique_args = [
         '--cell='+cell,
         '--rank='+rank,

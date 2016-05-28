@@ -1,2 +1,4 @@
 2016-05-27 18:18:44,141 - __main__ - starting run: lstm-10
 2016-05-28 13:56:27,692 - __main__ - starting run: vanilla-10
+2016-05-28 21:22:27,465 - __main__ - starting run: irnn-10
+2016-05-29 04:17:15,326 - __main__ - run finished in 24887.860825 s
