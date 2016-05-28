@@ -26,7 +26,7 @@ args = [
 ]
 
 cells = [
-    'lstm',
+    #'lstm',
     'vanilla',
     'irnn',
     'cp-relu',
