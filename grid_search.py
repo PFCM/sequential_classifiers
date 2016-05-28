@@ -22,16 +22,16 @@ args = [
     '--layers=1',
     '--num_epochs=100',
     '--batch_size=50',
-    '--learning_rate=0.01'
+    '--learning_rate=0.1'
 ]
 
 cells = [
     #'lstm',
-    #'vanilla',
-    #'irnn',
+    'tt-relu',
+    'vanilla',
+    'irnn',
     'cp-relu',
     'cp-tanh',
-    'tt-relu',
     'tt-tanh'
 ]
 
@@ -46,7 +46,7 @@ for cell, rank in itertools.product(cells, ranks):
     unique_args = [
         '--cell='+cell,
         '--rank='+rank,
-        '--results_dir=prelims/{}-{}'.format(cell, rank)]
+        '--results_dir=prelims/highlr/{}-{}'.format(cell, rank)]
 
     print('~' * twidth)
     print('~' * twidth)
