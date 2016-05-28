@@ -181,7 +181,7 @@ def main(_):
 
     print('{:\\^40}'.format('testing'))
     test_accuracy = run_epoch(sess, test, inputs, targets,
-                              tf.no_op(), accuracy)
+                              tf.no_op(), accuracy, None)
     print('{:^40}'.format(test_accuracy))
     with open(test_results, 'w') as f:
         f.write(test_accuracy)
