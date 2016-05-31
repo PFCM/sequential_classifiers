@@ -112,7 +112,7 @@ def activation_stabiliser(states, global_step, beta=500):
     norms = [tf.sqrt(tf.reduce_sum(tf.square(act), reduction_indices=1))
              for act in states]
     diffs = [b - a for a, b in zip(norms, norms[1:])]
-    return beta * tf.reduce_mean(tf.pack(diffs))
+    return beta * tf.reduce_mean(tf.square(tf.pack(diffs)))
 
 
 def main(_):
