@@ -124,13 +124,14 @@ def loss(logits, targets):
     return tf.reduce_mean(batch_losses)
 
 
-def train(loss, learning_rate, grad_norm=10.0):
+def train(loss, learning_rate, global_step, grad_norm=10.0):
     """Gets an op to minimise the given loss"""
-    opt = tf.train.GradientDescentOptimizer(learning_rate)
+    # opt = tf.train.AdamOptimizer(learning_rate, epsilon=1e-2)
+    opt = tf.train.MomentumOptimizer(learning_rate, 0.9)
     tvars = tf.trainable_variables()
     grads = opt.compute_gradients(loss, tvars)
-    grads, norm = tf.clip_by_global_norm([grad for grad, _ in grads], 10)
-    return opt.apply_gradients(zip(grads, tvars)), norm
+    grads, norm = tf.clip_by_global_norm([grad for grad, _ in grads], grad_norm)
+    return opt.apply_gradients(zip(grads, tvars), global_step=global_step), norm
 
 
 def accuracy(logits, targets):

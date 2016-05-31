@@ -31,6 +31,7 @@ flags.DEFINE_string(
     'lstm',
     'which cell to use. One of: `vanilla`, `cp-relu`, `cp-tanh`, `tt-relu`, '
     '`tt-tanh`, `irnn` or `lstm`.')
+flags.DEFINE_float('max_grad_norm', 10.0, 'where to clip the global norm of the gradien during backprop')
 
 FLAGS = flags.FLAGS
 
@@ -47,10 +48,14 @@ def get_cell(size):
         return mrnn.IRNNCell(size)
     if FLAGS.cell == 'cp-relu':
         return mrnn.SimpleCPCell(size, size, FLAGS.rank,
-                                 nonlinearity=tf.nn.relu)
+                                 nonlinearity=tf.nn.relu,
+                                 weightnorm=True,
+                                 separate_pad=True)
     if FLAGS.cell == 'cp-tanh':
         return mrnn.SimpleCPCell(size, size, FLAGS.rank,
-                                 nonlinearity=tf.nn.tanh)
+                                 nonlinearity=tf.nn.tanh,
+                                 weightnorm=True,
+                                 separate_pad=True)
     if FLAGS.cell == 'tt-relu':
         return mrnn.SimpleTTCell(size, size, [FLAGS.rank]*2,
                                  nonlinearity=tf.nn.relu)
@@ -114,13 +119,16 @@ def main(_):
     # unrolling of the network.
     seq_length = 28*28  # how many mnist pixels
     batch_size = FLAGS.batch_size
+    global_step = tf.Variable(0, trainable=False)
     inputs = [tf.placeholder(tf.float32, name='input_{}'.format(i),
                              shape=[batch_size, 1])
               for i in range(seq_length)]
     targets = tf.placeholder(tf.int64, name='targets',
                              shape=[batch_size])
 
-    learning_rate = tf.Variable(FLAGS.learning_rate)
+    learning_rate = tf.train.exponential_decay(FLAGS.learning_rate,
+                                               global_step,
+                                               1, 0.99)
 
     print('{:.^40}'.format('getting model'), end='', flush=True)
     with tf.variable_scope('model'):
@@ -128,7 +136,7 @@ def main(_):
         init_state, final_state, logits = sm.inference(
             inputs, FLAGS.layers, cell, 10)
         loss = sm.loss(logits, targets)
-        train_op, gnorm = sm.train(loss, learning_rate)
+        train_op, gnorm = sm.train(loss, learning_rate, FLAGS.max_grad_norm)
         accuracy = sm.accuracy(logits, targets)
     print('\r{:\\^40}'.format('got model with {} params'.format(count_params())))
     with open(os.path.join(results_dir, 'params.txt'), 'w') as f:
@@ -151,9 +159,10 @@ def main(_):
     print('\r{:\\^40}'.format('got data'))
 
     for epoch in range(FLAGS.num_epochs):
-        train, valid, _ = data.get_iters(batch_size)
+        train, valid, _ = data.get_iters(batch_size, shuffle=True)
         # do a training run
-        print('{:/<25}'.format('Epoch {}'.format(epoch+1)))
+        current_lr = learning_rate.eval(sess)
+        print('{:/<25}'.format('Epoch {} (learning rate {})'.format(epoch+1, current_lr)))
         train_loss = run_epoch(sess, train, inputs, targets,
                                train_op, loss, gnorm)
         print()
