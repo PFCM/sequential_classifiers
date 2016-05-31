@@ -105,9 +105,10 @@ def count_params():
     return total
 
 
-def activation_stabiliser(states, beta=500):
+def activation_stabiliser(states, global_step, beta=500):
     """as per http://arxiv.org/pdf/1511.08400v7.pdf
     (roughly)"""
+    beta = tf.train.exponential_decay(beta, global_step, 100, 0.8)
     norms = [tf.sqrt(tf.reduce_sum(tf.square(act), reduction_indices=1))
              for act in states]
     diffs = [b - a for a, b in zip(norms, norms[1:])]
