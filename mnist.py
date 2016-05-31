@@ -128,7 +128,7 @@ def main(_):
 
     learning_rate = tf.train.exponential_decay(FLAGS.learning_rate,
                                                global_step,
-                                               10000, 0.9,
+                                               1000, 0.9,
                                                staircase=True)
 
     print('{:.^40}'.format('getting model'), end='', flush=True)
