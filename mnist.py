@@ -149,7 +149,7 @@ def main(_):
             inputs, FLAGS.layers, cell, 10)
         loss = sm.loss(logits, targets)
         if FLAGS.stabilise_acts:
-            loss += activation_stabiliser(outputs)  # only works for one layer
+            loss += activation_stabiliser(outputs, global_step)  # only works for one layer
         train_op, gnorm = sm.train(loss, learning_rate, global_step, FLAGS.max_grad_norm)
         accuracy = sm.accuracy(logits, targets)
     print('\r{:\\^40}'.format('got model with {} params'.format(count_params())))
