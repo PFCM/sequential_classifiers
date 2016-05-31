@@ -128,7 +128,8 @@ def main(_):
 
     learning_rate = tf.train.exponential_decay(FLAGS.learning_rate,
                                                global_step,
-                                               1, 0.99)
+                                               10000, 0.9,
+                                               staircase=True)
 
     print('{:.^40}'.format('getting model'), end='', flush=True)
     with tf.variable_scope('model'):
@@ -136,7 +137,7 @@ def main(_):
         init_state, final_state, logits = sm.inference(
             inputs, FLAGS.layers, cell, 10)
         loss = sm.loss(logits, targets)
-        train_op, gnorm = sm.train(loss, learning_rate, FLAGS.max_grad_norm)
+        train_op, gnorm = sm.train(loss, learning_rate, global_step, FLAGS.max_grad_norm)
         accuracy = sm.accuracy(logits, targets)
     print('\r{:\\^40}'.format('got model with {} params'.format(count_params())))
     with open(os.path.join(results_dir, 'params.txt'), 'w') as f:
@@ -161,7 +162,7 @@ def main(_):
     for epoch in range(FLAGS.num_epochs):
         train, valid, _ = data.get_iters(batch_size, shuffle=True)
         # do a training run
-        current_lr = learning_rate.eval(sess)
+        current_lr = learning_rate.eval(session=sess)
         print('{:/<25}'.format('Epoch {} (learning rate {})'.format(epoch+1, current_lr)))
         train_loss = run_epoch(sess, train, inputs, targets,
                                train_op, loss, gnorm)
