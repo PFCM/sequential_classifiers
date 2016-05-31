@@ -25,6 +25,7 @@ flags.DEFINE_string('results_dir', 'time', 'where to store the results. If `time
 flags.DEFINE_float('learning_rate', 0.01, 'learning rate for SGD')
 flags.DEFINE_integer('batch_size', 100, 'how many examples to use for SGD')
 flags.DEFINE_integer('rank', 10, 'the rank of the tensor decompositions')
+flags.DEFINE_bool('stabilise_acts', False, 'regularise the successive hidden norms (only works for one layer)')
 
 flags.DEFINE_string(
     'cell',
@@ -85,7 +86,7 @@ def run_epoch(sess, batch_iter, inputs, targets, train_op, loss, gnorm):
                                            feed_dict=feed)
             print('\r batch loss {:.5f}  (grad norm: {:.5f})'.format(batch_loss, norm),
                   end='')
-        
+
         total_loss += batch_loss
         num_steps += 1
         if np.isnan(batch_loss):
@@ -104,6 +105,15 @@ def count_params():
     return total
 
 
+def activation_stabiliser(states, beta=500):
+    """as per http://arxiv.org/pdf/1511.08400v7.pdf
+    (roughly)"""
+    norms = [tf.sqrt(tf.reduce_sum(tf.square(act), reduction_indices=1))
+             for act in states]
+    diffs = [b - a for a, b in zip(norms, norms[1:])]
+    return beta * tf.reduce_mean(tf.pack(diffs))
+
+
 def main(_):
     # make a space for results
     if FLAGS.results_dir == 'time':
@@ -113,7 +123,7 @@ def main(_):
     results_file = os.path.join(results_dir, 'results.txt')
     test_results = os.path.join(results_dir, 'test.txt')
     os.mkdir(results_dir)
-    
+
     # now we get the stuff
     # unfortunately we are going to have to do some serious
     # unrolling of the network.
@@ -128,15 +138,17 @@ def main(_):
 
     learning_rate = tf.train.exponential_decay(FLAGS.learning_rate,
                                                global_step,
-                                               1000, 0.9,
-                                               staircase=True)
+                                               10000, 0.9,
+                                               staircase=False)
 
     print('{:.^40}'.format('getting model'), end='', flush=True)
     with tf.variable_scope('model'):
         cell = get_cell(FLAGS.width)
-        init_state, final_state, logits = sm.inference(
+        init_state, final_state, logits, outputs = sm.inference(
             inputs, FLAGS.layers, cell, 10)
         loss = sm.loss(logits, targets)
+        if FLAGS.stabilise_acts:
+            loss += activation_stabiliser(outputs)  # only works for one layer
         train_op, gnorm = sm.train(loss, learning_rate, global_step, FLAGS.max_grad_norm)
         accuracy = sm.accuracy(logits, targets)
     print('\r{:\\^40}'.format('got model with {} params'.format(count_params())))
@@ -147,7 +159,7 @@ def main(_):
     model_dir = os.path.join(results_dir, 'models')
     os.mkdir(model_dir)
     model_filename = os.path.join(model_dir, 'model')
-    
+
     saver = tf.train.Saver(tf.trainable_variables(), max_to_keep=1)
 
     sess = tf.Session()
@@ -184,7 +196,7 @@ def main(_):
                 f.write('Quit after {} epochs with nan loss.\n'.format(epoch+1))
                 return
 
-    
+
     print('...saving', end='', flush=True)
     saver.save(sess, model_filename+'-final')
     print('\r---Saved model.')

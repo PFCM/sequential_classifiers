@@ -97,7 +97,7 @@ def inference(inputs, num_layers,
         logits = _feedforward_inference(final_state, num_classes)
     else:
         logits = _feedforward_inference(outputs[-1], num_classes)
-    return initial_state, final_state, logits
+    return initial_state, final_state, logits, outputs
 
 
 def loss(logits, targets):
