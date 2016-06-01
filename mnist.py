@@ -50,12 +50,12 @@ def get_cell(size):
     if FLAGS.cell == 'cp-relu':
         return mrnn.SimpleCPCell(size, size, FLAGS.rank,
                                  nonlinearity=tf.nn.relu,
-                                 weightnorm=True,
+                                 weightnorm=False,
                                  separate_pad=True)
     if FLAGS.cell == 'cp-tanh':
         return mrnn.SimpleCPCell(size, size, FLAGS.rank,
                                  nonlinearity=tf.nn.tanh,
-                                 weightnorm=True,
+                                 weightnorm=False,
                                  separate_pad=True)
     if FLAGS.cell == 'tt-relu':
         return mrnn.SimpleTTCell(size, size, [FLAGS.rank]*2,
@@ -108,7 +108,7 @@ def count_params():
 def activation_stabiliser(states, global_step, beta=500.0):
     """as per http://arxiv.org/pdf/1511.08400v7.pdf
     (roughly)"""
-    beta = tf.train.exponential_decay(beta, global_step, 100, 0.8)
+    beta = tf.train.exponential_decay(beta, global_step, 500, 0.8)
     norms = [tf.sqrt(tf.reduce_sum(tf.square(act), reduction_indices=1))
              for act in states]
     diffs = [b - a for a, b in zip(norms, norms[1:])]
@@ -176,7 +176,8 @@ def main(_):
         train, valid, _ = data.get_iters(batch_size, shuffle=True)
         # do a training run
         current_lr = learning_rate.eval(session=sess)
-        print('{:/<25}'.format('Epoch {} (learning rate {})'.format(epoch+1, current_lr)))
+        print('{:/<25}'.format('Epoch {} (learning rate {}) ({} steps)'.format(
+            epoch+1, current_lr, global_step.eval(session=sess))))
         train_loss = run_epoch(sess, train, inputs, targets,
                                train_op, loss, gnorm)
         print()
