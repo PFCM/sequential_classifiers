@@ -63,6 +63,8 @@ def get_cell(size):
     if FLAGS.cell == 'tt-tanh':
         return mrnn.SimpleTTCell(size, size, [FLAGS.rank]*2,
                                  nonlinearity=tf.nn.tanh)
+    if FLAGS.cell == 'cp+':
+        return mrnn.AdditiveCPCell(size, size, FLAGS.rank)
     raise ValueError('Unknown cell: {}'.format(FLAGS.cell))
 
 
