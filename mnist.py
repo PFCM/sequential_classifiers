@@ -107,7 +107,7 @@ def count_params():
     return total
 
 
-def activation_stabiliser(states, global_step, beta=500.0):
+def activation_stabiliser(states, global_step, beta=250.0):
     """as per http://arxiv.org/pdf/1511.08400v7.pdf
     (roughly)"""
     beta = tf.train.exponential_decay(beta, global_step, 500, 0.8)
