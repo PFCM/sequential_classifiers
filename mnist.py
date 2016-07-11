@@ -68,7 +68,9 @@ def get_cell(size):
     if FLAGS.cell == 'cp+':
         return mrnn.AdditiveCPCell(size, size, FLAGS.rank, nonlinearity=tf.nn.relu)
     if FLAGS.cell == 'cp+-':
-        return mrnn.AddSubCPCell(size, size, FLAGS.rank, nonlinearity=tf.nn.tanh)
+        return mrnn.AddSubCPCell(size, size, FLAGS.rank, nonlinearity=tf.nn.relu)
+    if FLAGS.cell == 'cp-del':
+        return mrnn.CPDeltaCell(size, size, FLAGS.rank)
     raise ValueError('Unknown cell: {}'.format(FLAGS.cell))
 
 
