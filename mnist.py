@@ -33,6 +33,8 @@ flags.DEFINE_string(
     'which cell to use. One of: `vanilla`, `cp-relu`, `cp-tanh`, `tt-relu`, '
     '`tt-tanh`, `irnn` or `lstm`.')
 flags.DEFINE_float('max_grad_norm', 10.0, 'where to clip the global norm of the gradien during backprop')
+flags.DEFINE_bool('permute', False, 'If true, a fixed random permutation of the images is used. The'
+                                    'see is always `1001`')
 
 FLAGS = flags.FLAGS
 
@@ -44,7 +46,7 @@ def get_cell(size):
     if FLAGS.cell == 'lstm':
         return tf.nn.rnn_cell.BasicLSTMCell(size)  # default forget biases
     if FLAGS.cell == 'vanilla':
-        return tf.nn.rnn_cell.BasicRNNCell(size)  # tfs is probably quicker.
+        return mrnn.VRNNCell(size, hh_init=mrnn.init.spectral_normalised_init(0.999))
     if FLAGS.cell == 'irnn':
         return mrnn.IRNNCell(size)
     if FLAGS.cell == 'cp-relu':
@@ -64,7 +66,9 @@ def get_cell(size):
         return mrnn.SimpleTTCell(size, size, [FLAGS.rank]*2,
                                  nonlinearity=tf.nn.tanh)
     if FLAGS.cell == 'cp+':
-        return mrnn.AdditiveCPCell(size, size, FLAGS.rank)
+        return mrnn.AdditiveCPCell(size, size, FLAGS.rank, nonlinearity=tf.nn.relu)
+    if FLAGS.cell == 'cp+-':
+        return mrnn.AddSubCPCell(size, size, FLAGS.rank, nonlinearity=tf.nn.tanh)
     raise ValueError('Unknown cell: {}'.format(FLAGS.cell))
 
 
@@ -141,8 +145,8 @@ def main(_):
 
     learning_rate = tf.train.exponential_decay(FLAGS.learning_rate,
                                                global_step,
-                                               10000, 0.9,
-                                               staircase=False)
+                                               2000, 0.9,
+                                               staircase=True)
 
     print('{:.^40}'.format('getting model'), end='', flush=True)
     with tf.variable_scope('model'):
@@ -171,7 +175,11 @@ def main(_):
     print('\r{:/^40}'.format('initialised'))
 
     print('{:.^40}'.format('getting data'), end='', flush=True)
-    _, _, test = data.get_iters(batch_size)
+    if FLAGS.permute:
+        permutation = data.get_permutation(1001)
+    else:
+        permutation = None
+    _, _, test = data.get_iters(batch_size, permute=permutation)
     print('\r{:\\^40}'.format('got data'))
 
     for epoch in range(FLAGS.num_epochs):
