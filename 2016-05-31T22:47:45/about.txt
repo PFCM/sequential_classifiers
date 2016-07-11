@@ -1,1 +1,0 @@
-irnn, hidden activation stabilisation, (not squared, probably the issue)
