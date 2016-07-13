@@ -66,7 +66,7 @@ def get_cell(size):
         return mrnn.SimpleTTCell(size, size, [FLAGS.rank]*2,
                                  nonlinearity=tf.nn.tanh)
     if FLAGS.cell == 'cp+':
-        return mrnn.AdditiveCPCell(size, size, FLAGS.rank, nonlinearity=tf.nn.relu)
+        return mrnn.AdditiveCPCell(size, size, FLAGS.rank, nonlinearity=tf.nn.tanh)
     if FLAGS.cell == 'cp+-':
         return mrnn.AddSubCPCell(size, size, FLAGS.rank, nonlinearity=tf.nn.relu)
     if FLAGS.cell == 'cp-del':

@@ -137,7 +137,7 @@ def loss(logits, targets):
 
 def train(loss, learning_rate, global_step, grad_norm=10.0):
     """Gets an op to minimise the given loss"""
-    # opt = tf.train.AdamOptimizer(learning_rate, epsilon=1e-2)
+    # opt = tf.train.AdamOptimizer(learning_rate, epsilon=1e-8)
     opt = tf.train.MomentumOptimizer(learning_rate, 0.9)
     tvars = tf.trainable_variables()
     grads = opt.compute_gradients(loss, tvars)
