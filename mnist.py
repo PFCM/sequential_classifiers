@@ -185,7 +185,7 @@ def main(_):
     print('\r{:\\^40}'.format('got data'))
 
     for epoch in range(FLAGS.num_epochs):
-        train, valid, _ = data.get_iters(batch_size, shuffle=True)
+        train, valid, _ = data.get_iters(batch_size, shuffle=True, permute=permutation)
         # do a training run
         current_lr = learning_rate.eval(session=sess)
         print('{:/<25}'.format('Epoch {} (learning rate {}) ({} steps)'.format(

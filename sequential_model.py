@@ -54,7 +54,8 @@ def _feedforward_inference(inputs, num_classes, scope=None):
 def inference(inputs, num_layers,
               cell, num_classes,
               do_projection=True,
-              classify_state=False):
+              classify_state=False,
+              full_logits=False):
     """Gets the forward step of the model.
 
     Optionally adds a projection layer, which is just a matmul
@@ -96,7 +97,17 @@ def inference(inputs, num_layers,
     if classify_state:
         logits = _feedforward_inference(final_state, num_classes)
     else:
-        logits = _feedforward_inference(outputs[-1], num_classes)
+        if full_logits:
+            logits = []
+            scope = tf.get_variable_scope()
+            first = True
+            for output in outputs:
+                if not first:
+                    scope.reuse_variables()
+                logits.append(_feedforward_inference(output, num_classes))
+                first = False
+        else:
+            logits = _feedforward_inference(outputs[-1], num_classes)
     return initial_state, final_state, logits, outputs
 
 
