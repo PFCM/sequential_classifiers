@@ -29,16 +29,21 @@ args = [
     '--layers=1',
     '--num_epochs=50',
     '--batch_size=100',
-    '--learning_rate=0.001',
+    '--learning_rate=0.01',
     '--permute=True',
+    '--max_grad_norm=1.0',
 ]
 
 cells = [
     'cp+-',
-    'cp+'
+    'cp+',
+#    'lstm',
+#    'vanilla',
+#    'irnn'
 ]
 
-ranks = ['1', '5', '25'] #, '50', '75', '100']
+ranks = ['1', '5', '25', '50', '75', '100']
+# ranks = ['150', '200']
 
 twidth = shutil.get_terminal_size((80, 20)).columns
 
@@ -56,10 +61,11 @@ if len(sys.argv) == 1:  # full sequential search
         if cell in ['lstm', 'vanilla', 'irnn'] \
            and rank != ranks[0]:
             continue
+        print('{:/^{}}'.format('{}-{}'.format(cell, rank), twidth))
         unique_args = [
             '--cell='+cell,
             '--rank='+rank,
-            '--results_dir=prelims/highlr/{}-{}'.format(cell, rank)]
+            '--results_dir=perms/{}-{}'.format(cell, rank)]
         run_subprocess(args + unique_args)
 elif len(sys.argv) == 2:
     # then we are just doing one and the grid has told us which
