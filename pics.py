@@ -1,4 +1,4 @@
-"""Make some pretty pictures of the networks outputs/hidden state while running over a 
+"""Make some pretty pictures of the networks outputs/hidden state while running over a
 test image"""
 from __future__ import absolute_import
 from __future__ import division
@@ -18,12 +18,14 @@ import mnist  # also gives us the flags we need
 
 flags = tf.app.flags
 flags.DEFINE_string('model_path', None, 'Where to look for a model to load.')
+flags.DEFINE_boolean('test_accuracy', False, 'if we should get the accuracy '
+                     'over the whole test set as well.')
 
 FLAGS = flags.FLAGS
 
 
 def get_png_encoders(images):
-    """Gets ops to encode a tensor of shape `[time x batch x state_size]` into a batch of 
+    """Gets ops to encode a tensor of shape `[time x batch x state_size]` into a batch of
     pictures"""
     images = tf.transpose(images, [1, 2, 0])  # shuffle them to [batch x state x time]
     images = tf.expand_dims(images, 3)  # add a channel dim of 1 for grayscale
@@ -38,7 +40,7 @@ def get_png_encoders(images):
         factor = tf.minimum(-127 / smallest, 127 / largest)
         # apply, and shift
         return factor * images + 127
-        
+
     def _positive_normalise():
         # just rescale so the largest value is 255
         return images * (255 / tf.reduce_max(images))
@@ -46,7 +48,7 @@ def get_png_encoders(images):
     images = tf.cond(tf.reduce_any(images < 0),
                      _negative_normalise, _positive_normalise)
     images = tf.saturate_cast(images, tf.uint8)
-    
+
     # unpack along the batch dimension, encode and repack
     return tf.pack(
         [tf.image.encode_png(im) for im in tf.unpack(images)])
@@ -60,6 +62,21 @@ def write_images(images, name):
         img_name = os.path.join(FLAGS.results_dir, name + '{}.png'.format(i))
         with open(img_name, 'wb') as fp:
             fp.write(bytes(image))
+
+
+def report_test_accuracy(session, inputs, logits, perm):
+    """gets the test data again and checks the accuracy over the whole
+    set"""
+    print('Doing test accuracy')
+    _, _, test = data.get_iters(FLAGS.batch_size,
+                                shuffle=False,
+                                permute=perm)
+    targets = tf.placeholder(tf.int64, shape=[FLAGS.batch_size])
+    acc_op = sm.accuracy(logits, targets)
+
+    accuracy = mnist.run_epoch(session, test, inputs, targets, tf.no_op(),
+                               acc_op, None)
+    print('\n\nTest accuracy: {}'.format(accuracy))
 
 
 if __name__ == '__main__':
@@ -125,3 +142,6 @@ if __name__ == '__main__':
         write_images(output_images, 'output')
         write_images(square_images, 'digit')
         write_images(class_images, 'class')
+
+        if FLAGS.test_accuracy:
+            report_test_accuracy(sess, inputs, logits[-1], permutation)
