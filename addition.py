@@ -88,34 +88,33 @@ def mse(a, b):
 
 def main(_):
     """train a model"""
-    with tf.device('/cpu:0'):
-        results_file = os.path.join(FLAGS.results_dir, 'results.txt')
-        os.makedirs(FLAGS.results_dir, exist_ok=True)
+    results_file = os.path.join(FLAGS.results_dir, 'results.txt')
+    os.makedirs(FLAGS.results_dir, exist_ok=True)
 
-        train_data, test_data = data.get_data_batches(
-            FLAGS.sequence_length, FLAGS.batch_size, 100000, 10000,
-            num_epochs=FLAGS.num_epochs)
+    train_data, test_data = data.get_data_batches(
+        FLAGS.sequence_length, FLAGS.batch_size, 100000, 10000,
+        num_epochs=FLAGS.num_epochs)
 
-        train_inputs = tf.unpack(train_data[0])
-        train_targets = train_data[1]
-        test_inputs = tf.unpack(test_data[0])
-        test_targets = test_data[1]
-        with tf.variable_scope('model') as scope:
-            cell = get_cell(FLAGS.width)
-            # get a model with one output which we will leave linear
-            _, _, logits, _ = sm.inference(
-                train_inputs, FLAGS.layers, cell, 1)
-            train_loss = mse(logits, train_targets)
+    train_inputs = tf.unpack(train_data[0])
+    train_targets = train_data[1]
+    test_inputs = tf.unpack(test_data[0])
+    test_targets = test_data[1]
+    with tf.variable_scope('model') as scope:
+        cell = get_cell(FLAGS.width)
+        # get a model with one output which we will leave linear
+        _, _, logits, _ = sm.inference(
+            train_inputs, FLAGS.layers, cell, 1)
+        train_loss = mse(logits, train_targets)
 
-            scope.reuse_variables()
-            _, _, test_logits, _ = sm.inference(
-                test_inputs, FLAGS.layers, cell, 1)
-            test_loss = mse(test_logits, train_targets)
-
-        global_step = tf.Variable(0, trainable=False)
-        with tf.variable_scope('train'):
-            train_op, gnorm = sm.train(train_loss, FLAGS.learning_rate,
-                                       global_step)
+        scope.reuse_variables()
+        _, _, test_logits, _ = sm.inference(
+            test_inputs, FLAGS.layers, cell, 1)
+        test_loss = mse(test_logits, train_targets)
+        
+    global_step = tf.Variable(0, trainable=False)
+    with tf.variable_scope('train'):
+        train_op, gnorm = sm.train(train_loss, FLAGS.learning_rate,
+                                   global_step)
 
     # should be ready to go
     sess = tf.Session()
