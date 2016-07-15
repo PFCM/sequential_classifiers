@@ -202,7 +202,8 @@ def main(_):
             f.write('{},{}\n'.format(train_loss, valid_accuracy))
         if (epoch+1) % 10 == 0:
             print('...saving', end='', flush=True)
-            saver.save(sess, model_filename, global_step=epoch+1)
+            saver.save(sess, model_filename, global_step=epoch+1,
+                       write_meta_graph=False)
             print('\r---Saved model.')
         if np.isnan(train_loss):
             print('Loss is nan, quitting')
@@ -212,7 +213,7 @@ def main(_):
 
 
     print('...saving', end='', flush=True)
-    saver.save(sess, model_filename+'-final')
+    saver.save(sess, model_filename+'-final', write_meta_graph=False)
     print('\r---Saved model.')
 
     print('{:\\^40}'.format('testing'))
