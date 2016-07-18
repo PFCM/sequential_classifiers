@@ -32,6 +32,7 @@ flags.DEFINE_string(
     'lstm',
     'which cell to use. One of: `vanilla`, `cp-relu`, `cp-tanh`, `tt-relu`, '
     '`tt-tanh`, `irnn` or `lstm`.')
+flags.DEFINE_string('optimiser', 'momentum', 'whether to use momentum or ADAM')
 flags.DEFINE_float('max_grad_norm', 10.0, 'where to clip the global norm of the gradien during backprop')
 flags.DEFINE_bool('permute', False, 'If true, a fixed random permutation of the images is used. The'
                                     'see is always `1001`')

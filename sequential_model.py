@@ -135,10 +135,14 @@ def loss(logits, targets):
     return tf.reduce_mean(batch_losses)
 
 
-def train(loss, learning_rate, global_step, grad_norm=10.0):
+def train(loss, learning_rate, global_step, grad_norm=10.0, optimiser='momentum'):
     """Gets an op to minimise the given loss"""
-    # opt = tf.train.AdamOptimizer(learning_rate, epsilon=1e-8)
-    opt = tf.train.MomentumOptimizer(learning_rate, 0.9)
+    if optimiser == 'adam':
+        opt = tf.train.AdamOptimizer(learning_rate, epsilon=1e-8)
+    elif optimiser == 'momentum':
+        opt = tf.train.MomentumOptimizer(learning_rate, 0.9)
+    else:
+        raise ValueError('Unknown optimiser: {}'.format(optimiser))
     tvars = tf.trainable_variables()
     grads = opt.compute_gradients(loss, tvars)
     grads, norm = tf.clip_by_global_norm([grad for grad, _ in grads], grad_norm)
