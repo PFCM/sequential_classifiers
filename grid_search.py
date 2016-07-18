@@ -27,11 +27,9 @@ args = [
             'mnist.py')),
     '--width=100',
     '--layers=1',
-    '--num_epochs=50',
+    '--num_epochs=100',
     '--batch_size=100',
-    '--learning_rate=0.01',
     '--permute=True',
-    '--max_grad_norm=1.0',
 ]
 
 cells = [
@@ -42,8 +40,10 @@ cells = [
 #    'irnn'
 ]
 
+learning_rates = ['0.01', '0.001']
+grad_norms = ['1.0', '10.0']
 ranks = ['1', '5', '25', '50', '75', '100']
-# ranks = ['150', '200']
+#ranks = ['150', '200']
 
 twidth = shutil.get_terminal_size((80, 20)).columns
 
@@ -65,17 +65,21 @@ if len(sys.argv) == 1:  # full sequential search
         unique_args = [
             '--cell='+cell,
             '--rank='+rank,
-            '--results_dir=perms/{}-{}'.format(cell, rank)]
+            '--results_dir=perms2/{}-{}'.format(cell, rank),
+            '--learning_rate=0.01',
+            '--max_grad_norm=1.0']
         run_subprocess(args + unique_args)
 elif len(sys.argv) == 2:
     # then we are just doing one and the grid has told us which
-    cell, rank = list(itertools.product(cells, ranks))[int(sys.argv[1]) - 1]
+    cell, rank, lr, gn = list(itertools.product(cells, ranks, learning_rates, grad_norms))[int(sys.argv[1]) - 1]
     unique_args = [
         '--cell='+cell,
         '--rank='+rank,
-        '--results_dir=output']
+        '--results_dir=output',
+        '--max_grad_norm='+gn,
+        '--learning_rate='+lr]
     with open('model_details.txt', 'w') as fp:
-        fp.write('{}, rank {}\n'.format(cell, rank))
+        fp.write('{}, rank {}, lr {}, grad clip {}\n'.format(cell, rank, lr, gn))
     print('Doing {}, rank {}'.format(cell, rank))
     run_subprocess(args + unique_args)
 else:

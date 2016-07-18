@@ -52,7 +52,7 @@ echo //running job: $SGE_TASK_ID//
 # do a thing
 python $HOME/COMP489/sequential_classifiers/grid_search.py $SGE_TASK_ID
 
-output_dir=$HOME/COMP489/sequential_classifiers/grid_runs_permute/grad1_$SGE_TASK_ID
+output_dir=$HOME/COMP489/sequential_classifiers/grid_runs_permute_round2/$SGE_TASK_ID
 
 mkdir -p $output_dir
 
