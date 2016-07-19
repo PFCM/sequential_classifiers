@@ -191,7 +191,10 @@ def main(_):
     for epoch in range(FLAGS.num_epochs):
         train, valid, _ = data.get_iters(batch_size, shuffle=True, permute=permutation)
         # do a training run
-        current_lr = learning_rate.eval(session=sess)
+        if FLAGS.learning_rate_decay:
+            current_lr = learning_rate.eval(session=sess)
+        else:
+            current_lr = learning_rate
         print('{:/<25}'.format('Epoch {} (learning rate {}) ({} steps)'.format(
             epoch+1, current_lr, global_step.eval(session=sess))))
         train_loss = run_epoch(sess, train, inputs, targets,
