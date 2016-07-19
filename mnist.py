@@ -28,6 +28,7 @@ flags.DEFINE_integer('batch_size', 100, 'how many examples to use for SGD')
 flags.DEFINE_integer('rank', 10, 'the rank of the tensor decompositions')
 flags.DEFINE_bool('stabilise_acts', False, 'regularise the successive hidden norms (only works for one layer)')
 
+flags.DEFINE_string('weightnorm', None, 'how to do weight normalisation (if any)')
 flags.DEFINE_string(
     'cell',
     'lstm',
@@ -72,7 +73,7 @@ def get_cell(size):
     if FLAGS.cell == 'cp+-':
         return mrnn.AddSubCPCell(size, size, FLAGS.rank, nonlinearity=tf.nn.relu)
     if FLAGS.cell == 'cp-del':
-        return mrnn.CPDeltaCell(size, size, FLAGS.rank)
+        return mrnn.CPDeltaCell(size, size, FLAGS.rank, weightnorm=FLAGS.weightnorm)
     raise ValueError('Unknown cell: {}'.format(FLAGS.cell))
 
 
