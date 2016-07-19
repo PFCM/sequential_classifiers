@@ -23,6 +23,7 @@ flags.DEFINE_integer('num_epochs', 100, 'how long to train for')
 flags.DEFINE_string('results_dir', 'time', 'where to store the results. If `time`'
                                            ' a directory is chosen based on the current time')
 flags.DEFINE_float('learning_rate', 0.01, 'learning rate for SGD')
+flags.DEFINE_bool('learning_rate_decay', True, 'whether to decay the lr')
 flags.DEFINE_integer('batch_size', 100, 'how many examples to use for SGD')
 flags.DEFINE_integer('rank', 10, 'the rank of the tensor decompositions')
 flags.DEFINE_bool('stabilise_acts', False, 'regularise the successive hidden norms (only works for one layer)')
@@ -145,11 +146,13 @@ def main(_):
               for i in range(seq_length)]
     targets = tf.placeholder(tf.int64, name='targets',
                              shape=[batch_size])
-
-    learning_rate = tf.train.exponential_decay(FLAGS.learning_rate,
-                                               global_step,
-                                               2000, 0.9,
-                                               staircase=True)
+    if FLAGS.learning_rate_decay:
+        learning_rate = tf.train.exponential_decay(FLAGS.learning_rate,
+                                                   global_step,
+                                                   2000, 0.9,
+                                                   staircase=True)
+    else:
+        learning_rate = FLAGS.learning_rate
 
     print('{:.^40}'.format('getting model'), end='', flush=True)
     with tf.variable_scope('model'):

@@ -30,6 +30,7 @@ args = [
     '--num_epochs=100',
     '--batch_size=100',
     '--permute=True',
+    '--optimiser=adam',
 ]
 
 cells = [
@@ -44,6 +45,7 @@ learning_rates = ['0.01', '0.001']
 grad_norms = ['1.0', '10.0']
 ranks = ['1', '5', '25', '50', '75', '100']
 #ranks = ['150', '200']
+#ranks = ['100']
 
 twidth = shutil.get_terminal_size((80, 20)).columns
 
