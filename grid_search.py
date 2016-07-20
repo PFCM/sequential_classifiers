@@ -31,19 +31,21 @@ args = [
     '--batch_size=100',
     '--permute=True',
     '--optimiser=adam',
+    '--weightnorm=partial'
 ]
 
 cells = [
-    'cp+-',
-    'cp+',
+    'cp-del',
+#    'cp+-',
+#    'cp+',
 #    'lstm',
 #    'vanilla',
 #    'irnn'
 ]
 
-learning_rates = ['0.01', '0.001']
-grad_norms = ['1.0', '10.0']
-ranks = ['1', '5', '25', '50', '75', '100']
+learning_rates = ['0.01', '0.1']
+grad_norms = ['1.0', '10.0', '1000.0']
+ranks = ['1', '5', '25', '50', '75', '100', '101']
 #ranks = ['150', '200']
 #ranks = ['100']
 
