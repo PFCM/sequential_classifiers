@@ -76,6 +76,10 @@ def get_cell(size):
         return mrnn.AddSubCPCell(size, size, FLAGS.rank, nonlinearity=tf.nn.relu)
     if FLAGS.cell == 'cp-del':
         return mrnn.CPDeltaCell(size, size, FLAGS.rank, weightnorm=FLAGS.weightnorm)
+    if FLAGS.cell == 'cp-res':
+        return mrnn.CPResCell(size, size, FLAGS.rank, weightnorm=FLAGS.weightnorm)
+    if FLAGS.cell == 'cp-loss':
+        return mrnn.CPLossyIntegrator(size, size, FLAGS.rank)
     raise ValueError('Unknown cell: {}'.format(FLAGS.cell))
 
 
@@ -152,7 +156,7 @@ def main(_):
     if FLAGS.learning_rate_decay:
         learning_rate = tf.train.exponential_decay(FLAGS.learning_rate,
                                                    global_step,
-                                                   2000, 0.9,
+                                                   12500, 0.9,
                                                    staircase=True)
     else:
         learning_rate = FLAGS.learning_rate
