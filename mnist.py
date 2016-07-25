@@ -76,6 +76,8 @@ def get_cell(size):
         return mrnn.CPDeltaCell(size, size, FLAGS.rank, weightnorm=FLAGS.weightnorm)
     if FLAGS.cell == 'cp-res':
         return mrnn.CPResCell(size, size, FLAGS.rank, weightnorm=FLAGS.weightnorm)
+    if FLAGS.cell == 'cp-loss':
+        return mrnn.CPLossyIntegrator(size, size, FLAGS.rank)
     raise ValueError('Unknown cell: {}'.format(FLAGS.cell))
 
 
