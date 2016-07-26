@@ -154,7 +154,7 @@ def main(_):
     if FLAGS.learning_rate_decay:
         learning_rate = tf.train.exponential_decay(FLAGS.learning_rate,
                                                    global_step,
-                                                   12500, 0.9,
+                                                   12500, 0.5,
                                                    staircase=True)
     else:
         learning_rate = FLAGS.learning_rate
