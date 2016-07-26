@@ -50,6 +50,9 @@ def get_cell(size):
         return tf.nn.rnn_cell.BasicLSTMCell(size)  # default forget biases
     if FLAGS.cell == 'vanilla':
         return mrnn.VRNNCell(size, hh_init=mrnn.init.spectral_normalised_init(0.999))
+    if FLAGS.cell == 'vanilla-layernorm':
+        return mrnn.VRNNCell(size, hh_init=mrnn.init.orthonormal_init(0.5),
+                             weightnorm='layer')
     if FLAGS.cell == 'irnn':
         return mrnn.IRNNCell(size)
     if FLAGS.cell == 'cp-relu':
@@ -70,6 +73,12 @@ def get_cell(size):
                                  nonlinearity=tf.nn.tanh)
     if FLAGS.cell == 'cp+':
         return mrnn.AdditiveCPCell(size, size, FLAGS.rank, nonlinearity=tf.nn.relu)
+    if FLAGS.cell == 'cp+pre':
+        return mrnn.AdditiveCPCell(size, size, FLAGS.rank, nonlinearity=tf.nn.relu,
+                                   layernorm='pre')
+    if FLAGS.cell == 'cp+post':
+        return mrnn.AdditiveCPCell(size, size, FLAGS.rank, nonlinearity=tf.nn.relu,
+                                   layernorm='post')
     if FLAGS.cell == 'cp+tanh':
         return mrnn.AdditiveCPCell(size, size, FLAGS.rank, nonlinearity=tf.nn.tanh)
     if FLAGS.cell == 'cp+-':
