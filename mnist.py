@@ -29,6 +29,7 @@ flags.DEFINE_integer('rank', 10, 'the rank of the tensor decompositions')
 flags.DEFINE_bool('stabilise_acts', False, 'regularise the successive hidden norms (only works for one layer)')
 
 flags.DEFINE_string('weightnorm', None, 'how to do weight normalisation (if any)')
+flags.DEFINE_bool('layernorm', False, 'whether to apply global layer norm (on the states)')
 flags.DEFINE_string(
     'cell',
     'lstm',
@@ -86,9 +87,11 @@ def get_cell(size):
     if FLAGS.cell == 'cp-del':
         return mrnn.CPDeltaCell(size, size, FLAGS.rank, weightnorm=FLAGS.weightnorm)
     if FLAGS.cell == 'cp-res':
-        return mrnn.CPResCell(size, size, FLAGS.rank, weightnorm=FLAGS.weightnorm)
+        return mrnn.CPResCell(size, size, FLAGS.rank)
     if FLAGS.cell == 'cp-loss':
         return mrnn.CPLossyIntegrator(size, size, FLAGS.rank)
+    if FLAGS.cell == 'cp-int':
+        return mrnn.CPSimpleIntegrator(size, size, FLAGS.rank, layernorm='post')
     raise ValueError('Unknown cell: {}'.format(FLAGS.cell))
 
 
@@ -165,7 +168,7 @@ def main(_):
     if FLAGS.learning_rate_decay:
         learning_rate = tf.train.exponential_decay(FLAGS.learning_rate,
                                                    global_step,
-                                                   12500, 0.5,
+                                                   12500, 0.85,
                                                    staircase=True)
     else:
         learning_rate = FLAGS.learning_rate
@@ -173,6 +176,8 @@ def main(_):
     print('{:.^40}'.format('getting model'), end='', flush=True)
     with tf.variable_scope('model'):
         cell = get_cell(FLAGS.width)
+        if FLAGS.layernorm:
+            cell = mrnn.LayerNormWrapper(cell)
         init_state, final_state, logits, outputs = sm.inference(
             inputs, FLAGS.layers, cell, 10)
         loss = sm.loss(logits, targets)
