@@ -82,6 +82,12 @@ def get_cell(size):
                                    layernorm='post')
     if FLAGS.cell == 'cp+tanh':
         return mrnn.AdditiveCPCell(size, size, FLAGS.rank, nonlinearity=tf.nn.tanh)
+    if FLAGS.cell == 'cp+tanhpre':
+        return mrnn.AdditiveCPCell(size, size, FLAGS.rank, nonlinearity=tf.nn.tanh,
+                                   layernorm='pre')
+    if FLAGS.cell == 'cp+tanhpost':
+        return mrnn.AdditiveCPCell(size, size, FLAGS.rank, nonlinearity=tf.nn.tanh,
+                                   layernorm='post')
     if FLAGS.cell == 'cp+-':
         return mrnn.AddSubCPCell(size, size, FLAGS.rank, nonlinearity=tf.nn.relu)
     if FLAGS.cell == 'cp-del':
@@ -91,7 +97,7 @@ def get_cell(size):
     if FLAGS.cell == 'cp-loss':
         return mrnn.CPLossyIntegrator(size, size, FLAGS.rank)
     if FLAGS.cell == 'cp-int':
-        return mrnn.CPSimpleIntegrator(size, size, FLAGS.rank, layernorm='post')
+        return mrnn.CPSimpleIntegrator(size, size, FLAGS.rank)
     raise ValueError('Unknown cell: {}'.format(FLAGS.cell))
 
 
