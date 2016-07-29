@@ -78,6 +78,9 @@ def get_cell(size):
             size, size, FLAGS.rank, nonlinearity=tf.nn.relu)
     if FLAGS.cell == 'cp-del':
         return mrnn.CPDeltaCell(size, size, FLAGS.rank)
+    if FLAGS.cell == 'vanilla-layernorm':
+        return mrnn.VRNNCell(size, size, hh_init=mrnn.init.orthonormal_init(),
+                             nonlinearity=tf.nn.tanh, weightnorm='layer')
     raise ValueError('Unknown cell: {}'.format(FLAGS.cell))
 
 
@@ -110,7 +113,7 @@ def main(_):
         _, _, test_logits, _ = sm.inference(
             test_inputs, FLAGS.layers, cell, 1)
         test_loss = mse(test_logits, train_targets)
-        
+
     global_step = tf.Variable(0, trainable=False)
     with tf.variable_scope('train'):
         train_op, gnorm = sm.train(train_loss, FLAGS.learning_rate,
