@@ -39,6 +39,9 @@ flags.DEFINE_string(
 flags.DEFINE_float('max_grad_norm', 10.0,
                    'where to clip the global norm of the gradients during '
                    'backprop')
+flags.DEFINE_bool('online', False, 'Whether to generate training/test data'
+                  ' or just generate batches of examples one at a time as'
+                  ' required')
 
 FLAGS = flags.FLAGS
 
@@ -106,18 +109,18 @@ def main(_):
         cell = get_cell(FLAGS.width)
         # get a model with one output which we will leave linear
         _, _, logits, _ = sm.inference(
-            train_inputs, FLAGS.layers, cell, 1)
+            train_inputs, FLAGS.layers, cell, 1, do_projection=False)
         train_loss = mse(logits, train_targets)
 
         scope.reuse_variables()
         _, _, test_logits, _ = sm.inference(
-            test_inputs, FLAGS.layers, cell, 1)
+            test_inputs, FLAGS.layers, cell, 1, do_projection=False)
         test_loss = mse(test_logits, train_targets)
 
     global_step = tf.Variable(0, trainable=False)
     with tf.variable_scope('train'):
         train_op, gnorm = sm.train(train_loss, FLAGS.learning_rate,
-                                   global_step)
+                                   global_step, optimiser='adam')
 
     # should be ready to go
     sess = tf.Session()
@@ -127,28 +130,46 @@ def main(_):
 
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+    
+    # how many times are we going to go?
+    num_steps = (100000 // FLAGS.batch_size) * FLAGS.num_epochs
+    bar = progressbar.ProgressBar(
+        widgets=['[', progressbar.Counter(), '] ',
+                 '(｢๑•₃•)｢ ',
+                 progressbar.Bar(marker='=', left='', right='☰'),
+                 ' (', progressbar.DynamicMessage('loss'), ')',
+                 '{', progressbar.AdaptiveETA(), '}'],
+        redirect_stdout=True)
 
     try:
+        bar.start(num_steps)
+        gnorm_sum = 0
+        tloss_sum = 0
         while not coord.should_stop():
 
             train_batch_loss, grad_norm, _ = sess.run(
                 [train_loss, gnorm, train_op])
             step = global_step.eval(session=sess)
-            print('\r{} train loss (one batch): {:.4f} (grad norm: {:.4f})'.format(
-                step, train_batch_loss, grad_norm), end='', flush=True)
+            gnorm_sum += grad_norm
+            tloss_sum += train_batch_loss
+            if step % 100 == 0:  # don't waste too much time looking pretty
+                bar.update(step, loss=tloss_sum/100)
+                tloss_sum = 0
             if step % 1000 == 0:  # arbitrary
                 mse_sum, valid_steps = 0, 0
                 for _ in range(10000 // FLAGS.batch_size):
                     valid_batch_loss = sess.run(test_loss)
                     valid_steps += 1
                     mse_sum += valid_batch_loss
-                print('\n{} valid loss: {}'.format(step, mse_sum / valid_steps))
+                print('\n{} valid loss: {}, avge grad norm: {}'.format(step, mse_sum / valid_steps, gnorm_sum / 1000))
                 with open(results_file, 'a') as fp:
-                    fp.write('{}\n'.format(mse_sum / valid_steps))
+                    fp.write('{}, {}\n'.format(mse_sum / valid_steps, gnorm_sum/1000))
+                gnorm_sum = 0
     except tf.errors.OutOfRangeError:
         print('Done')
     finally:
         coord.request_stop()
+        bar.finish()
     coord.join(threads)
     sess.close()
 
