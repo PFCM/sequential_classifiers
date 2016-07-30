@@ -63,7 +63,7 @@ def get_cell(size):
                                  weightnorm=False,
                                  separate_pad=True)
     if FLAGS.cell == 'cp-tanh':
-        return mrnn.SimpleCPCell(size, 2 , FLAGS.rank,
+        return mrnn.SimpleCPCell(size, 2, FLAGS.rank,
                                  nonlinearity=tf.nn.tanh,
                                  weightnorm=False,
                                  separate_pad=True)
@@ -87,9 +87,12 @@ def get_cell(size):
     raise ValueError('Unknown cell: {}'.format(FLAGS.cell))
 
 
-def mse(a, b):
+def mse(a, b, summary_name=None):
     """returns mse between the two inputs"""
-    return tf.reduce_mean(tf.squared_difference(a, b))
+    loss = tf.reduce_mean(tf.squared_difference(a, b))
+    if summary_name:
+        tf.scalar_summary(summary_name, loss)
+    return loss
 
 
 def main(_):
@@ -118,18 +121,18 @@ def main(_):
         # get a model with one output which we will leave linear
         _, _, logits, _ = sm.inference(
             train_inputs, FLAGS.layers, cell, 1, do_projection=False)
-        train_loss = mse(logits, train_targets)
-
+        train_loss = mse(logits, train_targets, 'train mse')
         if not FLAGS.online:
             scope.reuse_variables()
             _, _, test_logits, _ = sm.inference(
                 test_inputs, FLAGS.layers, cell, 1, do_projection=False)
-            test_loss = mse(test_logits, train_targets)
+            test_loss = mse(test_logits, test_targets, 'test mse')
 
     global_step = tf.Variable(0, trainable=False)
     with tf.variable_scope('train'):
         train_op, gnorm = sm.train(train_loss, FLAGS.learning_rate,
                                    global_step, optimiser='adam')
+        tf.scalar_summary('gradient norm', gnorm)
 
     # should be ready to go
     sess = tf.Session()
@@ -139,6 +142,9 @@ def main(_):
 
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+
+    summ_writer = tf.train.SummaryWriter(FLAGS.results_dir, graph=sess.graph)
+    all_summs = tf.merge_all_summaries()
 
     # how many times are we going to go?
     if FLAGS.online:
@@ -169,6 +175,8 @@ def main(_):
             if step % 100 == 0:  # don't waste too much time looking pretty
                 bar.update(step, loss=tloss_sum/100)
                 tloss_sum = 0
+                summaries = sess.run(all_summs)
+                summ_writer.add_summary(summaries, global_step=step)
             if step % 1000 == 0:  # arbitrary
                 if FLAGS.online:
                     mse_sum = tloss

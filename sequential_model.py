@@ -135,21 +135,27 @@ def loss(logits, targets):
     return tf.reduce_mean(batch_losses)
 
 
-def train(loss, learning_rate, global_step, grad_norm=10.0, optimiser='momentum'):
+def train(loss, learning_rate, global_step, grad_norm=10.0,
+          optimiser='momentum'):
     """Gets an op to minimise the given loss"""
     if optimiser == 'adam':
         opt = tf.train.AdamOptimizer(learning_rate, epsilon=1e-8)
     elif optimiser == 'momentum':
         opt = tf.train.MomentumOptimizer(learning_rate, 0.9)
+    elif optimiser == 'rmsprop':
+        opt = tf.train.RMSPropOptimizer(learning_rate)
     else:
         raise ValueError('Unknown optimiser: {}'.format(optimiser))
     tvars = tf.trainable_variables()
     grads = opt.compute_gradients(loss, tvars)
-    grads, norm = tf.clip_by_global_norm([grad for grad, _ in grads], grad_norm)
-    return opt.apply_gradients(zip(grads, tvars), global_step=global_step), norm
+    grads, norm = tf.clip_by_global_norm(
+        [grad for grad, _ in grads], grad_norm)
+    return opt.apply_gradients(
+        zip(grads, tvars), global_step=global_step), norm
 
 
 def accuracy(logits, targets):
     """Gets an op that tells you how accurate you are over a batch"""
     # we are just taking arg max so should be no need to softmax?
-    return tf.reduce_mean(tf.cast(tf.nn.in_top_k(logits, targets, 1), tf.float32))
+    return tf.reduce_mean(
+        tf.cast(tf.nn.in_top_k(logits, targets, 1), tf.float32))
