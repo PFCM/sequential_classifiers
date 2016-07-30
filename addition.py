@@ -63,7 +63,7 @@ def get_cell(size):
                                  weightnorm=False,
                                  separate_pad=True)
     if FLAGS.cell == 'cp-tanh':
-        return mrnn.SimpleCPCell(size, size, FLAGS.rank,
+        return mrnn.SimpleCPCell(size, 2 , FLAGS.rank,
                                  nonlinearity=tf.nn.tanh,
                                  weightnorm=False,
                                  separate_pad=True)
