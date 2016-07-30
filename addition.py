@@ -56,7 +56,7 @@ def get_cell(size):
         return mrnn.VRNNCell(
             size, hh_init=mrnn.init.spectral_normalised_init(0.999))
     if FLAGS.cell == 'irnn':
-        return mrnn.IRNNCell(size)
+        return mrnn.IRNNCell(size, 2)
     if FLAGS.cell == 'cp-relu':
         return mrnn.SimpleCPCell(size, size, FLAGS.rank,
                                  nonlinearity=tf.nn.relu,
@@ -97,14 +97,22 @@ def main(_):
     results_file = os.path.join(FLAGS.results_dir, 'results.txt')
     os.makedirs(FLAGS.results_dir, exist_ok=True)
 
-    train_data, test_data = data.get_data_batches(
-        FLAGS.sequence_length, FLAGS.batch_size, 100000, 10000,
-        num_epochs=FLAGS.num_epochs)
+    if FLAGS.online:
+        train_inputs, train_targets = data.get_online_sequences(
+            FLAGS.sequence_length, FLAGS.batch_size)
+        train_inputs = tf.train.limit_epochs(train_inputs,
+                                             num_epochs=FLAGS.num_epochs)
+        train_inputs = tf.unpack(train_inputs)
+    else:
+        train_data, test_data = data.get_data_batches(
+            FLAGS.sequence_length, FLAGS.batch_size, 100000, 10000,
+            num_epochs=FLAGS.num_epochs)
 
-    train_inputs = tf.unpack(train_data[0])
-    train_targets = train_data[1]
-    test_inputs = tf.unpack(test_data[0])
-    test_targets = test_data[1]
+        train_inputs = tf.unpack(train_data[0])
+        train_targets = train_data[1]
+        test_inputs = tf.unpack(test_data[0])
+        test_targets = test_data[1]
+
     with tf.variable_scope('model') as scope:
         cell = get_cell(FLAGS.width)
         # get a model with one output which we will leave linear
@@ -112,10 +120,11 @@ def main(_):
             train_inputs, FLAGS.layers, cell, 1, do_projection=False)
         train_loss = mse(logits, train_targets)
 
-        scope.reuse_variables()
-        _, _, test_logits, _ = sm.inference(
-            test_inputs, FLAGS.layers, cell, 1, do_projection=False)
-        test_loss = mse(test_logits, train_targets)
+        if not FLAGS.online:
+            scope.reuse_variables()
+            _, _, test_logits, _ = sm.inference(
+                test_inputs, FLAGS.layers, cell, 1, do_projection=False)
+            test_loss = mse(test_logits, train_targets)
 
     global_step = tf.Variable(0, trainable=False)
     with tf.variable_scope('train'):
@@ -130,9 +139,12 @@ def main(_):
 
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
-    
+
     # how many times are we going to go?
-    num_steps = (100000 // FLAGS.batch_size) * FLAGS.num_epochs
+    if FLAGS.online:
+        num_steps = FLAGS.num_epochs
+    else:
+        num_steps = (100000 // FLAGS.batch_size) * FLAGS.num_epochs
     bar = progressbar.ProgressBar(
         widgets=['[', progressbar.Counter(), '] ',
                  '(｢๑•₃•)｢ ',
@@ -145,25 +157,35 @@ def main(_):
         bar.start(num_steps)
         gnorm_sum = 0
         tloss_sum = 0
-        while not coord.should_stop():
+        tloss = 0
+        while not coord.should_stop() or FLAGS.online:
 
             train_batch_loss, grad_norm, _ = sess.run(
                 [train_loss, gnorm, train_op])
             step = global_step.eval(session=sess)
             gnorm_sum += grad_norm
             tloss_sum += train_batch_loss
+            tloss += train_batch_loss
             if step % 100 == 0:  # don't waste too much time looking pretty
                 bar.update(step, loss=tloss_sum/100)
                 tloss_sum = 0
             if step % 1000 == 0:  # arbitrary
-                mse_sum, valid_steps = 0, 0
-                for _ in range(10000 // FLAGS.batch_size):
-                    valid_batch_loss = sess.run(test_loss)
-                    valid_steps += 1
-                    mse_sum += valid_batch_loss
-                print('\n{} valid loss: {}, avge grad norm: {}'.format(step, mse_sum / valid_steps, gnorm_sum / 1000))
+                if FLAGS.online:
+                    mse_sum = tloss
+                    tloss = 0
+                    valid_steps = 1000
+                else:
+                    mse_sum, valid_steps = 0, 0
+                    for _ in range(10000 // FLAGS.batch_size):
+                        valid_batch_loss = sess.run(test_loss)
+                        valid_steps += 1
+                        mse_sum += valid_batch_loss
+                    print('\n{} valid loss: {}, avge grad norm: {}'.format(
+                        step, mse_sum / valid_steps, gnorm_sum / 1000))
+
                 with open(results_file, 'a') as fp:
-                    fp.write('{}, {}\n'.format(mse_sum / valid_steps, gnorm_sum/1000))
+                    fp.write('{}, {}\n'.format
+                             (mse_sum / valid_steps, gnorm_sum/1000))
                 gnorm_sum = 0
     except tf.errors.OutOfRangeError:
         print('Done')
