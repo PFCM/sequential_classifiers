@@ -56,6 +56,8 @@ def get_cell(size):
                              weightnorm='layer')
     if FLAGS.cell == 'irnn':
         return mrnn.IRNNCell(size)
+    if FLAGS.cell == 'cp-gate':
+        return mrnn.CPGateCell(size, FLAGS.rank)
     if FLAGS.cell == 'cp-relu':
         return mrnn.SimpleCPCell(size, size, FLAGS.rank,
                                  nonlinearity=tf.nn.relu,
