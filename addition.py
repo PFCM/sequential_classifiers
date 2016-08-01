@@ -81,6 +81,8 @@ def get_cell(size):
             size, size, FLAGS.rank, nonlinearity=tf.nn.relu)
     if FLAGS.cell == 'cp-del':
         return mrnn.CPDeltaCell(size, size, FLAGS.rank)
+    if FLAGS.cell == 'cp-gate':
+        return mrnn.CPGateCell(size, FLAGS.rank)
     if FLAGS.cell == 'vanilla-layernorm':
         return mrnn.VRNNCell(size, size, hh_init=mrnn.init.orthonormal_init(),
                              nonlinearity=tf.nn.tanh, weightnorm='layer')
@@ -138,6 +140,7 @@ def main(_):
     sess = tf.Session()
     print('initialising', end='', flush=True)
     sess.run(tf.initialize_all_variables())
+    sess.run(tf.initialize_local_variables())
     print('\rinitialised    ')
 
     coord = tf.train.Coordinator()
