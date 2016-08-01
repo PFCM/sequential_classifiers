@@ -191,7 +191,7 @@ def main(_):
         loss = sm.loss(logits, targets)
         if FLAGS.stabilise_acts:
             loss += activation_stabiliser(outputs, global_step)  # only works for one layer
-        train_op, gnorm = sm.train(loss, learning_rate, global_step, FLAGS.max_grad_norm)
+        train_op, gnorm = sm.train(loss, learning_rate, global_step, FLAGS.max_grad_norm, optimiser=FLAGS.optimiser)
         accuracy = sm.accuracy(logits, targets)
     print('\r{:\\^40}'.format('got model with {} params'.format(count_params())))
     with open(os.path.join(results_dir, 'params.txt'), 'w') as f:
