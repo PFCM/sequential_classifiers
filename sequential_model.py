@@ -25,6 +25,11 @@ def _recurrent_inference(inputs, rnn_cell):
     init_state = rnn_cell.zero_state(batch_size, tf.float32)
     outputs, final_state = tf.nn.rnn(rnn_cell, inputs,
                                      initial_state=init_state)
+    # outputs, final_state = tf.nn.dynamic_rnn(rnn_cell, tf.pack(inputs),
+    #                                          initial_state=init_state,
+    #                                          time_major=True,
+    #                                          parallel_iterations=8192)
+    # outputs = tf.unpack(outputs)
     return init_state, outputs, final_state
 
 

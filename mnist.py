@@ -5,6 +5,7 @@ from __future__ import print_function
 
 import datetime
 import os
+import time
 
 import numpy as np
 import tensorflow as tf
@@ -50,7 +51,7 @@ def get_cell(size):
     if FLAGS.cell == 'lstm':
         return tf.nn.rnn_cell.BasicLSTMCell(size)  # default forget biases
     if FLAGS.cell == 'vanilla':
-        return mrnn.VRNNCell(size, hh_init=mrnn.init.spectral_normalised_init(0.999))
+        return mrnn.VRNNCell(size, hh_init=mrnn.init.orthonormal_init(0.999))
     if FLAGS.cell == 'vanilla-layernorm':
         return mrnn.VRNNCell(size, hh_init=mrnn.init.orthonormal_init(0.5),
                              weightnorm='layer')
@@ -108,8 +109,10 @@ def run_epoch(sess, batch_iter, inputs, targets, train_op, loss, gnorm):
     Returns average loss for the epoch"""
     total_loss = 0
     num_steps = 0
-
+    
     for data, labels in batch_iter:
+        start = time.time()
+        
         feed = {inputs[i]: data[i, ...] for i in range(len(inputs))}
         feed[targets] = labels
 
@@ -123,7 +126,11 @@ def run_epoch(sess, batch_iter, inputs, targets, train_op, loss, gnorm):
                                            feed_dict=feed)
             print('\r batch loss {:.5f}  (grad norm: {:.5f})'.format(batch_loss, norm),
                   end='')
+        end = time.time()
 
+        print('  ({:.3f} seqs per sec)'.format(data.shape[1]/(end-start)),
+              end='')
+        
         total_loss += batch_loss
         num_steps += 1
         if np.isnan(batch_loss):
@@ -236,7 +243,7 @@ def main(_):
         print('---Valid accuracy: {}'.format(valid_accuracy))
         with open(results_file, 'a') as f:
             f.write('{},{}\n'.format(train_loss, valid_accuracy))
-        if (epoch+1) % 10 == 0:
+        if (epoch+1) % 10 == 0:  # OR BEST VALID ERROR
             print('...saving', end='', flush=True)
             saver.save(sess, model_filename, global_step=epoch+1,
                        write_meta_graph=False)
