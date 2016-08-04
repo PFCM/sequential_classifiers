@@ -40,6 +40,8 @@ flags.DEFINE_string('optimiser', 'momentum', 'whether to use momentum or ADAM')
 flags.DEFINE_float('max_grad_norm', 10.0, 'where to clip the global norm of the gradien during backprop')
 flags.DEFINE_bool('permute', False, 'If true, a fixed random permutation of the images is used. The'
                                     'see is always `1001`')
+flags.DEFINE_integer('starting_step', 0, 'If restarting training from a model '
+                     'before we starting saving the global step, where should it be?')
 
 FLAGS = flags.FLAGS
 
@@ -167,14 +169,14 @@ def main(_):
         results_dir = FLAGS.results_dir
     results_file = os.path.join(results_dir, 'results.txt')
     test_results = os.path.join(results_dir, 'test.txt')
-    os.mkdir(results_dir)
+    os.makedirs(results_dir, exist_ok=True)
 
     # now we get the stuff
     # unfortunately we are going to have to do some serious
     # unrolling of the network.
     seq_length = 28*28  # how many mnist pixels
     batch_size = FLAGS.batch_size
-    global_step = tf.Variable(0, trainable=False)
+    global_step = tf.Variable(FLAGS.starting_step, trainable=False)
     inputs = [tf.placeholder(tf.float32, name='input_{}'.format(i),
                              shape=[batch_size, 1])
               for i in range(seq_length)]
@@ -206,15 +208,24 @@ def main(_):
 
     # set up a saver
     model_dir = os.path.join(results_dir, 'models')
-    os.mkdir(model_dir)
+    if os.path.exists(model_dir):
+        print('Model directory existings, going to try to load existing')
+    else:
+        os.mkdir(model_dir)
     model_filename = os.path.join(model_dir, 'model')
 
     saver = tf.train.Saver(tf.trainable_variables(), max_to_keep=1)
 
     sess = tf.Session()
     print('{:.^40}'.format('initialising'), end='', flush=True)
-    sess.run(tf.initialize_all_variables())
-    print('\r{:/^40}'.format('initialised'))
+    load_filename = tf.train.latest_checkpoint(model_dir)
+    if not load_filename:
+        sess.run(tf.initialize_all_variables())
+        print('\r{:/^40}'.format('initialised fresh'))
+    else:
+        sess.run(tf.initialize_all_variables())  # there are some that aren't saved
+        saver.restore(sess, load_filename)
+        print('\r{:/^40}'.format('loaded from {}'.format(load_filename)))
 
     print('{:.^40}'.format('getting data'), end='', flush=True)
     if FLAGS.permute:
