@@ -8,13 +8,16 @@ import numpy as np
 import tensorflow as tf
 
 
-def _recurrent_inference(inputs, rnn_cell):
+def _recurrent_inference(inputs, rnn_cell, dynamic_iterations=0):
     """gets the forward pass of the recurrent part of the model.
 
     Args:
         inputs: placeholder for the input images. Expected to be
             a list of tensors of shape `[batch_size, rnn_cell.input_size]`
         rnn_cell: the tf.nn.rnn_cell.RNNCell to construct the network with.
+        dynamic_iterations: if > 0, then we will return an RNN with dynamic
+            unrolling and the given number of parallel_iterations. If it is
+            zero (the default), then the model is completely unrolled.
     Returns:
         A triple (zero_state, outputs, final_state) where zero_state is the
             variable for the initial state of the network, outputs is a list
@@ -23,13 +26,16 @@ def _recurrent_inference(inputs, rnn_cell):
     """
     batch_size = inputs[0].get_shape()[0].value  # get the batch size
     init_state = rnn_cell.zero_state(batch_size, tf.float32)
-    outputs, final_state = tf.nn.rnn(rnn_cell, inputs,
-                                     initial_state=init_state)
-    # outputs, final_state = tf.nn.dynamic_rnn(rnn_cell, tf.pack(inputs),
-    #                                          initial_state=init_state,
-    #                                          time_major=True,
-    #                                          parallel_iterations=8192)
-    # outputs = tf.unpack(outputs)
+
+    if dynamic_iterations == 0:
+        outputs, final_state = tf.nn.rnn(rnn_cell, inputs,
+                                         initial_state=init_state)
+    else:
+        outputs, final_state = tf.nn.dynamic_rnn(
+            rnn_cell, tf.pack(inputs), initial_state=init_state,
+            time_major=True, parallel_iterations=dynamic_iterations,
+            swap_memory=True)
+        outputs = tf.unpack(outputs)
     return init_state, outputs, final_state
 
 
@@ -60,7 +66,8 @@ def inference(inputs, num_layers,
               cell, num_classes,
               do_projection=True,
               classify_state=False,
-              full_logits=False):
+              full_logits=False,
+              dynamic_iterations=0):
     """Gets the forward step of the model.
 
     Optionally adds a projection layer, which is just a matmul
@@ -98,7 +105,8 @@ def inference(inputs, num_layers,
             proj = tf.get_variable('projection', [in_size, cell.output_size])
             inputs = [tf.matmul(input_, proj) for input_ in inputs]
 
-    initial_state, outputs, final_state = _recurrent_inference(inputs, cell)
+    initial_state, outputs, final_state = _recurrent_inference(
+        inputs, cell, dynamic_iterations)
     if classify_state:
         logits = _feedforward_inference(final_state, num_classes)
     else:
