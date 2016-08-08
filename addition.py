@@ -130,7 +130,7 @@ def main(_):
             scope.reuse_variables()
             _, _, test_logits, _ = sm.inference(
                 test_inputs, FLAGS.layers, cell, 1, do_projection=False,
-                dynamic_iterations=32)
+                dynamic_iterations=0)
             test_logits = tf.squeeze(test_logits)
             test_loss = mse(test_logits, test_targets, 'test mse')
 
