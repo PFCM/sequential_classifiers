@@ -124,14 +124,14 @@ def main(_):
         # get a model with one output which we will leave linear
         _, _, logits, _ = sm.inference(
             train_inputs, FLAGS.layers, cell, 1, do_projection=False,
-            dynamic_iterations=8192)
+            dynamic_iterations=512)
         logits = tf.squeeze(logits)
         train_loss = mse(logits, train_targets, 'train mse')
         if not FLAGS.online:
             scope.reuse_variables()
             _, _, test_logits, _ = sm.inference(
                 test_inputs, FLAGS.layers, cell, 1, do_projection=False,
-                dynamic_iterations=1024)
+                dynamic_iterations=8)
             test_logits = tf.squeeze(test_logits)
             test_loss = mse(test_logits, test_targets, 'test mse')
 
@@ -180,18 +180,18 @@ def main(_):
             gnorm_sum += grad_norm
             tloss_sum += train_batch_loss
             tloss += train_batch_loss
-            if step % 100 == 0:  # don't waste too much time looking pretty
-                bar.update(step, loss=tloss_sum/100)
+            if step % 10 == 0:  # don't waste too much time looking pretty
+                bar.update(step, loss=tloss_sum/10)
                 tloss_sum = 0
                 summaries = sess.run(all_summs)
                 summ_writer.add_summary(summaries, global_step=step)
-                inputs, targets, outputs, tloss = sess.run([train_data[0], train_targets, logits, train_loss])
+                # inputs, targets, outputs, tloss = sess.run([train_data[0], train_targets, logits, train_loss])
                 # print('in: {}'.format(inputs))
                 # print('t: {}'.format(targets))
                 # print('o: {}'.format(outputs))
                 # print('mse: {}'.format(tloss))
                 # return
-            if step % 1000 == 0:  # arbitrary
+            if step % 10 == 0:  # arbitrary
                 if FLAGS.online:
                     mse_sum = tloss
                     tloss = 0
