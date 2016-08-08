@@ -42,6 +42,7 @@ flags.DEFINE_float('max_grad_norm', 10.0,
 flags.DEFINE_bool('online', False, 'Whether to generate training/test data'
                   ' or just generate batches of examples one at a time as'
                   ' required')
+flags.DEFINE_string('optimiser', 'adam', 'adam, rmsprop or momentum')
 
 FLAGS = flags.FLAGS
 
@@ -51,10 +52,10 @@ def get_cell(size):
     At the moment assumes you want input size = size.
     """
     if FLAGS.cell == 'lstm':
-        return tf.nn.rnn_cell.BasicLSTMCell(size)  # default forget biases
+        return tf.nn.rnn_cell.BasicLSTMCell(size, state_is_tuple=True)  # default forget biases
     if FLAGS.cell == 'vanilla':
         return mrnn.VRNNCell(
-            size, hh_init=mrnn.init.spectral_normalised_init(0.999))
+            size, hh_init=mrnn.init.orthonormal_init())
     if FLAGS.cell == 'irnn':
         return mrnn.IRNNCell(size, 2)
     if FLAGS.cell == 'cp-relu':
@@ -68,10 +69,10 @@ def get_cell(size):
                                  weightnorm=False,
                                  separate_pad=True)
     if FLAGS.cell == 'tt-relu':
-        return mrnn.SimpleTTCell(size, size, [FLAGS.rank]*2,
+        return mrnn.SimpleTTCell(size, 2, [FLAGS.rank]*2,
                                  nonlinearity=tf.nn.relu)
     if FLAGS.cell == 'tt-tanh':
-        return mrnn.SimpleTTCell(size, size, [FLAGS.rank]*2,
+        return mrnn.SimpleTTCell(size, 2, [FLAGS.rank]*2,
                                  nonlinearity=tf.nn.tanh)
     if FLAGS.cell == 'cp+':
         return mrnn.AdditiveCPCell(
@@ -80,11 +81,11 @@ def get_cell(size):
         return mrnn.AddSubCPCell(
             size, size, FLAGS.rank, nonlinearity=tf.nn.relu)
     if FLAGS.cell == 'cp-del':
-        return mrnn.CPDeltaCell(size, size, FLAGS.rank)
+        return mrnn.CPDeltaCell(size, 2, FLAGS.rank)
     if FLAGS.cell == 'cp-gate':
         return mrnn.CPGateCell(size, FLAGS.rank)
     if FLAGS.cell == 'vanilla-layernorm':
-        return mrnn.VRNNCell(size, size, hh_init=mrnn.init.orthonormal_init(),
+        return mrnn.VRNNCell(size, 2, hh_init=mrnn.init.orthonormal_init(),
                              nonlinearity=tf.nn.tanh, weightnorm='layer')
     raise ValueError('Unknown cell: {}'.format(FLAGS.cell))
 
@@ -123,21 +124,21 @@ def main(_):
         # get a model with one output which we will leave linear
         _, _, logits, _ = sm.inference(
             train_inputs, FLAGS.layers, cell, 1, do_projection=False,
-            dynamic_iterations=32)
+            dynamic_iterations=2048)
         logits = tf.squeeze(logits)
         train_loss = mse(logits, train_targets, 'train mse')
         if not FLAGS.online:
             scope.reuse_variables()
             _, _, test_logits, _ = sm.inference(
                 test_inputs, FLAGS.layers, cell, 1, do_projection=False,
-                dynamic_iterations=0)
+                dynamic_iterations=512)
             test_logits = tf.squeeze(test_logits)
             test_loss = mse(test_logits, test_targets, 'test mse')
 
     global_step = tf.Variable(0, trainable=False)
     with tf.variable_scope('train'):
         train_op, gnorm = sm.train(train_loss, FLAGS.learning_rate,
-                                   global_step, optimiser='adam')
+                                   global_step, optimiser=FLAGS.optimiser)
         tf.scalar_summary('gradient norm', gnorm)
 
     # should be ready to go
@@ -163,7 +164,7 @@ def main(_):
                  '(｢๑•₃•)｢ ',
                  progressbar.Bar(marker='=', left='', right='☰'),
                  ' (', progressbar.DynamicMessage('loss'), ')',
-                 '{', progressbar.AdaptiveETA(), '}'],
+                 '{', progressbar.ETA(), '}'],
         redirect_stdout=True)
 
     try:
@@ -179,12 +180,18 @@ def main(_):
             gnorm_sum += grad_norm
             tloss_sum += train_batch_loss
             tloss += train_batch_loss
-            if step % 100 == 0:  # don't waste too much time looking pretty
-                bar.update(step, loss=tloss_sum/100)
+            if step % 10 == 0:  # don't waste too much time looking pretty
+                bar.update(step, loss=tloss_sum/10)
                 tloss_sum = 0
                 summaries = sess.run(all_summs)
                 summ_writer.add_summary(summaries, global_step=step)
-            if step % 1000 == 0:  # arbitrary
+                # inputs, targets, outputs, tloss = sess.run([train_data[0], train_targets, logits, train_loss])
+                # print('in: {}'.format(inputs))
+                # print('t: {}'.format(targets))
+                # print('o: {}'.format(outputs))
+                # print('mse: {}'.format(tloss))
+                # return
+            if step % 10 == 0:  # arbitrary
                 if FLAGS.online:
                     mse_sum = tloss
                     tloss = 0
