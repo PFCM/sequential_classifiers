@@ -124,14 +124,14 @@ def main(_):
         # get a model with one output which we will leave linear
         _, _, logits, _ = sm.inference(
             train_inputs, FLAGS.layers, cell, 1, do_projection=False,
-            dynamic_iterations=512)
+            dynamic_iterations=2048)
         logits = tf.squeeze(logits)
         train_loss = mse(logits, train_targets, 'train mse')
         if not FLAGS.online:
             scope.reuse_variables()
             _, _, test_logits, _ = sm.inference(
                 test_inputs, FLAGS.layers, cell, 1, do_projection=False,
-                dynamic_iterations=8)
+                dynamic_iterations=512)
             test_logits = tf.squeeze(test_logits)
             test_loss = mse(test_logits, test_targets, 'test mse')
 
