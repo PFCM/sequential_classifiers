@@ -43,6 +43,7 @@ flags.DEFINE_bool('online', False, 'Whether to generate training/test data'
                   ' or just generate batches of examples one at a time as'
                   ' required')
 flags.DEFINE_string('optimiser', 'adam', 'adam, rmsprop or momentum')
+flags.DEFINE_bool('save', True, 'Whether or not to save actual model files')
 
 FLAGS = flags.FLAGS
 
@@ -135,7 +136,7 @@ def main(_):
             test_logits = tf.squeeze(test_logits)
             test_loss = mse(test_logits, test_targets, 'test mse')
 
-    global_step = tf.Variable(0, trainable=False)
+    global_step = tf.Variable(0, trainable=False, name='global_step')
     with tf.variable_scope('train'):
         train_op, gnorm = sm.train(train_loss, FLAGS.learning_rate,
                                    global_step, optimiser=FLAGS.optimiser)
@@ -211,6 +212,13 @@ def main(_):
                 gnorm_sum = 0
     except tf.errors.OutOfRangeError:
         print('Done')
+        if FLAGS.save:
+            print('..saving..', end='')
+            saver = tf.train.Saver(tf.trainable_variables())
+            saver.save(sess, os.path.join(FLAGS.results_dir, 'model'),
+                       write_meta_graph=False)
+            print('\r  saved  ')
+
     finally:
         coord.request_stop()
         bar.finish()
