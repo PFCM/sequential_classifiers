@@ -60,7 +60,7 @@ def main(_):
 
         _, _, logits, _ = sm.inference(
             model_in, 1, cell, 9, do_projection=False,
-            full_logits=True)
+            full_logits=True, dynamic_iterations=8192)
     print('\r{:~^60}'.format('got model'))
 
     print('{:-^60}'.format('getting training ops'), end='', flush=True)
