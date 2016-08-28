@@ -88,6 +88,8 @@ def get_cell(size):
     if FLAGS.cell == 'vanilla-layernorm':
         return mrnn.VRNNCell(size, 2, hh_init=mrnn.init.orthonormal_init(),
                              nonlinearity=tf.nn.tanh, weightnorm='layer')
+    if FLAGS.cell == 'gru':
+        return tf.nn.rnn_cell.GRUCell(size)
     raise ValueError('Unknown cell: {}'.format(FLAGS.cell))
 
 
