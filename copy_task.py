@@ -9,7 +9,7 @@ import tensorflow as tf
 import progressbar
 
 import mrnn
-import rnndatasets.copy as data
+import rnndatasets.synthetic.copy as data
 
 import sequential_model as sm
 

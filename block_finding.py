@@ -53,6 +53,8 @@ def get_cell():
             FLAGS.width, 1, FLAGS.rank, nonlinearity=tf.nn.relu)
     if FLAGS.cell == 'cp-gate':
         return mrnn.CPGateCell(FLAGS.width, FLAGS.rank)
+    if FLAGS.cell == 'cp-gate-combined':
+        return mrnn.CPGateCell(FLAGS.width, FLAGS.rank, separate_pad=False)
     raise ValueError('Unknown cell: {}'.format(FLAGS.cell))
 
 
