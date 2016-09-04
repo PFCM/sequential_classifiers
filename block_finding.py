@@ -53,6 +53,8 @@ def get_cell():
             FLAGS.width, 1, FLAGS.rank, nonlinearity=tf.nn.relu)
     if FLAGS.cell == 'cp-gate':
         return mrnn.CPGateCell(FLAGS.width, FLAGS.rank)
+    if FLAGS.cell == 'cp-gate-combined':
+        return mrnn.CPGateCell(FLAGS.width, FLAGS.rank, separate_pad=False)
     raise ValueError('Unknown cell: {}'.format(FLAGS.cell))
 
 
@@ -118,6 +120,7 @@ def main(_):
         inputs = tf.train.limit_epochs(inputs, FLAGS.num_steps)
         inputs = tf.unpack(inputs)
         labels = tf.expand_dims(labels, 1, name='aaa')
+        labels = tf.cast(labels, tf.float32)
     print('{:~^40}'.format('have data tensors'))
 
     with tf.variable_scope('rnn'):
