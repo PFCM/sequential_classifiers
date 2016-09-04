@@ -27,6 +27,8 @@ flags.DEFINE_integer('batch_size', 50, 'how many to train on at once')
 flags.DEFINE_integer('sequence_length', 200, 'how long to remember')
 flags.DEFINE_float('max_grad_norm', 10000.0, 'how much clippery')
 flags.DEFINE_integer('dynamic_iterations', 0, 'whether to unroll the whole thing')
+flags.DEFINE_float('decay', 1.0, 'how much to decay the learning rate')
+flags.DEFINE_integer('decay_steps', 5000, 'how often to decay the learning rate')
 
 flags.DEFINE_string('results_dir', None, 'Where to put the resuts')
 
@@ -107,9 +109,16 @@ def main(_):
             raise ValueError('unknown task {}'.format(FLAGS.task))
         
         tf.scalar_summary('loss', loss_op)
+        global_step = tf.Variable(0, name='global_step', trainable=False)
+        if FLAGS.decay != 1.0:
+            learning_rate = tf.train.exponential_decay(
+                FLAGS.learning_rate, global_step, FLAGS.decay_steps,
+                FLAGS.decay, staircase=True)
+        else:
+            learning_rate = FLAGS.learning_rate
 
-        opt = tf.train.AdamOptimizer(FLAGS.learning_rate)
-        train_op = opt.minimize(loss_op)
+        opt = tf.train.AdamOptimizer(learning_rate)
+        train_op = opt.minimize(loss_op, global_step=global_step)
     print('\r{:~^60}'.format('got train ops'))
     
     all_summaries = tf.merge_all_summaries()
@@ -128,6 +137,9 @@ def main(_):
             print('\r({}) loss: {}'.format(step, loss), end='')
             summs = sess.run(all_summaries)
             writer.add_summary(summs, global_step=step)
+        if step % FLAGS.decay_steps == 0:
+            if type(learning_rate) is not float:
+                print('\nlr: {}'.format(sess.run(learning_rate)))
 
 
 if __name__ == '__main__':
