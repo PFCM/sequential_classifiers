@@ -118,6 +118,7 @@ def main(_):
         inputs = tf.train.limit_epochs(inputs, FLAGS.num_steps)
         inputs = tf.unpack(inputs)
         labels = tf.expand_dims(labels, 1, name='aaa')
+        labels = tf.cast(labels, tf.float32)
     print('{:~^40}'.format('have data tensors'))
 
     with tf.variable_scope('rnn'):
