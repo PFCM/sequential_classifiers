@@ -109,21 +109,27 @@ def main(_):
             raise ValueError('unknown task {}'.format(FLAGS.task))
         
         tf.scalar_summary('loss', loss_op)
+        accuracy = tf.contrib.metrics.accuracy(tf.argmax(logits[-1], 1),
+                                               tf.cast(targets, tf.int64))
+        tf.scalar_summary('accuracy', accuracy)
         global_step = tf.Variable(0, name='global_step', trainable=False)
         if FLAGS.decay != 1.0:
             learning_rate = tf.train.exponential_decay(
                 FLAGS.learning_rate, global_step, FLAGS.decay_steps,
-                FLAGS.decay, staircase=True)
+                FLAGS.decay, staircase=False)
         else:
             learning_rate = FLAGS.learning_rate
         
-        opt = tf.train.AdamOptimizer(learning_rate, beta1=0.99, beta2=0.999,
-                                     epsilon=1e-10)
+        # opt = tf.train.AdamOptimizer(learning_rate, beta1=0.99, beta2=0.999,
+        #                             epsilon=1e-10)
+        opt = tf.train.RMSPropOptimizer(learning_rate)
         grads_and_vars = opt.compute_gradients(loss_op,
                                                tf.trainable_variables())
-        gnorm = tf.global_norm([grad for grad, var in grads_and_vars])
+        cgrads, gnorm = tf.clip_by_global_norm([grad for grad, _ in grads_and_vars],
+                                             FLAGS.max_grad_norm)
         tf.scalar_summary('gnorm', gnorm)
-        train_op = opt.apply_gradients(grads_and_vars, global_step=global_step)
+        train_op = opt.apply_gradients([(grad, var) for grad, (_, var) in zip(cgrads, grads_and_vars)],
+                                       global_step=global_step)
     print('\r{:~^60}'.format('got train ops'))
     
     all_summaries = tf.merge_all_summaries()
