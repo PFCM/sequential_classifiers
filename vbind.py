@@ -50,7 +50,7 @@ def get_cell():
     if FLAGS.cell == 'vanilla':
         return tf.nn.rnn_cell.BasicRNNCell(FLAGS.width)
     if FLAGS.cell == 'cp-gate':
-        return mrnn.CPGateCell(FLAGS.width, FLAGS.rank, candidate_nonlin=tf.nn.relu)
+        return mrnn.CPGateCell(FLAGS.width, FLAGS.rank) #, candidate_nonlin=tf.nn.relu)
     if FLAGS.cell == 'cp-gate-combined':
         return mrnn.CPGateCell(FLAGS.width, FLAGS.rank, separate_pad=False)
     if FLAGS.cell == 'gru':
@@ -116,9 +116,14 @@ def main(_):
                 FLAGS.decay, staircase=True)
         else:
             learning_rate = FLAGS.learning_rate
-
-        opt = tf.train.AdamOptimizer(learning_rate)
-        train_op = opt.minimize(loss_op, global_step=global_step)
+        
+        opt = tf.train.AdamOptimizer(learning_rate, beta1=0.99, beta2=0.999,
+                                     epsilon=1e-10)
+        grads_and_vars = opt.compute_gradients(loss_op,
+                                               tf.trainable_variables())
+        gnorm = tf.global_norm([grad for grad, var in grads_and_vars])
+        tf.scalar_summary('gnorm', gnorm)
+        train_op = opt.apply_gradients(grads_and_vars, global_step=global_step)
     print('\r{:~^60}'.format('got train ops'))
     
     all_summaries = tf.merge_all_summaries()
