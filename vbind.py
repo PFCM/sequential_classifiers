@@ -38,6 +38,8 @@ flags.DEFINE_integer('num_items', 1, 'how many things to remember')
 flags.DEFINE_integer('dimensionality', 8, 'size of patterns')
 flags.DEFINE_integer('offset', 0, '1 or 0, whether to try remember the'
                      'current pattern or the following one')
+flags.DEFINE_bool('inbetween_noise', False, 'whether it is extra tough')
+flags.DEFINE_bool('real_patterns', False, 'binary or not')
 
 FLAGS = flags.FLAGS
 
@@ -76,7 +78,7 @@ def main(_):
         inputs, targets = data.get_recognition_tensors(
             FLAGS.batch_size, FLAGS.sequence_length, FLAGS.num_items,
             FLAGS.dimensionality, FLAGS.task, FLAGS.offset,
-            inbetween_noise=False)
+            inbetween_noise=FLAGS.inbetween_noise, real=FLAGS.real_patterns)
         inputs = tf.unpack(inputs)
 
     print('{:-^60}'.format('getting model'), end='', flush=True)
@@ -109,8 +111,12 @@ def main(_):
             raise ValueError('unknown task {}'.format(FLAGS.task))
         
         tf.scalar_summary('loss', loss_op)
-        accuracy = tf.contrib.metrics.accuracy(tf.argmax(logits[-1], 1),
-                                               tf.cast(targets, tf.int64))
+        print('logits', logits[-1].get_shape())
+        predictions = tf.argmax(logits[-1], 1)
+        print('preds', predictions.get_shape())
+        print('targets', targets.get_shape())
+        accuracy = tf.contrib.metrics.accuracy(predictions,
+                                               targets)
         tf.scalar_summary('accuracy', accuracy)
         global_step = tf.Variable(0, name='global_step', trainable=False)
         if FLAGS.decay != 1.0:
@@ -120,8 +126,8 @@ def main(_):
         else:
             learning_rate = FLAGS.learning_rate
         
-        # opt = tf.train.AdamOptimizer(learning_rate, beta1=0.99, beta2=0.999,
-        #                             epsilon=1e-10)
+        #opt = tf.train.AdamOptimizer(learning_rate, beta1=0.9, beta2=0.99,
+        #                             epsilon=1e-8)
         opt = tf.train.RMSPropOptimizer(learning_rate)
         grads_and_vars = opt.compute_gradients(loss_op,
                                                tf.trainable_variables())
@@ -144,7 +150,7 @@ def main(_):
 
         loss, _ = sess.run([loss_op, train_op])
 
-        if step % 10 == 0:
+        if step % 100 == 0:
             print('\r({}) loss: {}'.format(step, loss), end='')
             summs = sess.run(all_summaries)
             writer.add_summary(summs, global_step=step)
