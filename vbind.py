@@ -71,24 +71,30 @@ def main(_):
     os.makedirs(FLAGS.results_dir, exist_ok=True)
 
     with tf.variable_scope('inputs'):
-        inputs, targets = data.get_recognition_tensors(
-            FLAGS.batch_size, FLAGS.sequence_length, FLAGS.num_items,
-            FLAGS.dimensionality, FLAGS.task, FLAGS.offset,
-            inbetween_noise=False)
+        if FLAGS.task == 'continuous':
+            inputs, targets = data.get_continuous_binding_tensors(
+                FLAGS.batch_size, FLAGS.sequence_length, FLAGS.num_items,
+                FLAGS.dimensionality)
+            targets = tf.unpack(targets)
+            image_summarise(targets, 'targets')
+        else:
+            inputs, targets = data.get_recognition_tensors(
+                FLAGS.batch_size, FLAGS.sequence_length, FLAGS.num_items,
+                FLAGS.dimensionality, FLAGS.task, FLAGS.offset,
+                inbetween_noise=False)
         inputs = tf.unpack(inputs)
 
     print('{:-^60}'.format('getting model'), end='', flush=True)
     with tf.variable_scope('model', initializer=mrnn.init.orthonormal_init()):
         cell = get_cell()
-        if FLAGS.task == 'recall':
+        if FLAGS.task == 'recall' or FLAGS.task == 'continuous':
             num_outputs = FLAGS.dimensionality
         elif FLAGS.task == 'order':
             num_outputs = FLAGS.num_items
         _, _, logits, outputs = sm.inference(
             inputs, 1, cell, num_outputs, do_projection=False,
             full_logits=True, dynamic_iterations=FLAGS.dynamic_iterations)
-        image_summarise([tf.nn.softmax(logit) for logit in logits], 
-                        'output')
+
         image_summarise(outputs, 'states')
         image_summarise(inputs, 'inputs')
     print('\r{:~^60}'.format('got model'))
@@ -103,15 +109,25 @@ def main(_):
             loss_op = tf.reduce_mean(
                 tf.nn.sparse_softmax_cross_entropy_with_logits(
                     logits[-1], targets))
+            image_summarise([tf.nn.softmax(logit) for logit in logits],
+                            'output')
+        elif FLAGS.task == 'continuous':
+            # let's try sigmoid xent for now
+            loss_op = tf.reduce_mean(
+                tf.pack([tf.nn.sigmoid_cross_entropy_with_logits(
+                    logit, target)
+                         for logit, target in zip(logits, targets)]))
+            image_summarise([tf.nn.sigmoid(logit) for logit in logits],
+                            'output')
         else:
             raise ValueError('unknown task {}'.format(FLAGS.task))
-        
+
         tf.scalar_summary('loss', loss_op)
 
         opt = tf.train.AdamOptimizer(FLAGS.learning_rate)
         train_op = opt.minimize(loss_op)
     print('\r{:~^60}'.format('got train ops'))
-    
+
     all_summaries = tf.merge_all_summaries()
     writer = tf.train.SummaryWriter(FLAGS.results_dir)
     sess = tf.Session()
