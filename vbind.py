@@ -38,13 +38,10 @@ flags.DEFINE_integer('num_items', 1, 'how many things to remember')
 flags.DEFINE_integer('dimensionality', 8, 'size of patterns')
 flags.DEFINE_integer('offset', 0, '1 or 0, whether to try remember the'
                      'current pattern or the following one')
-<<<<<<< HEAD
-flags.DEFINE_bool('inbetween_noise', False, 'what is in between the patterns')
-=======
+
 flags.DEFINE_bool('inbetween_noise', False, 'whether it is extra tough')
 flags.DEFINE_bool('real_patterns', False, 'binary or not')
 flags.DEFINE_integer('max_keep', None, 'maximum length to keep patterns')
->>>>>>> abc92b15af8d3b7991702e66962d7daac57aee9b
 
 FLAGS = flags.FLAGS
 
