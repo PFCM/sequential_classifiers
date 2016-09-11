@@ -38,7 +38,13 @@ flags.DEFINE_integer('num_items', 1, 'how many things to remember')
 flags.DEFINE_integer('dimensionality', 8, 'size of patterns')
 flags.DEFINE_integer('offset', 0, '1 or 0, whether to try remember the'
                      'current pattern or the following one')
+<<<<<<< HEAD
 flags.DEFINE_bool('inbetween_noise', False, 'what is in between the patterns')
+=======
+flags.DEFINE_bool('inbetween_noise', False, 'whether it is extra tough')
+flags.DEFINE_bool('real_patterns', False, 'binary or not')
+flags.DEFINE_integer('max_keep', None, 'maximum length to keep patterns')
+>>>>>>> abc92b15af8d3b7991702e66962d7daac57aee9b
 
 FLAGS = flags.FLAGS
 
@@ -69,21 +75,39 @@ def image_summarise(data, tag):
     tf.image_summary(tag, image_data)
 
 
+def orthogonal_regularizer(amount):
+    def o_r(var):
+        if len(var.get_shape()) != 2:
+            return 0
+        return tf.reduce_sum(tf.squared_difference(
+            tf.matmul(var, var, transpose_b=True),
+            tf.constant(np.eye(var.get_shape()[0].value)))) * amount
+
+
 def main(_):
     """do stuff"""
     os.makedirs(FLAGS.results_dir, exist_ok=True)
 
     with tf.variable_scope('inputs'):
-        inputs, targets = data.get_recognition_tensors(
-            FLAGS.batch_size, FLAGS.sequence_length, FLAGS.num_items,
-            FLAGS.dimensionality, FLAGS.task, FLAGS.offset,
-            inbetween_noise=FLAGS.inbetween_noise)
+        if FLAGS.task == 'continuous':
+            inputs, targets = data.get_continuous_binding_tensors(
+                FLAGS.batch_size, FLAGS.sequence_length, FLAGS.num_items,
+                FLAGS.dimensionality, real_patterns=FLAGS.real_patterns,
+                max_keep_length=FLAGS.max_keep)
+            targets = tf.unpack(targets)
+            image_summarise(targets, 'targets')
+        else:
+            inputs, targets = data.get_recognition_tensors(
+                FLAGS.batch_size, FLAGS.sequence_length, FLAGS.num_items,
+                FLAGS.dimensionality, FLAGS.task, FLAGS.offset,
+                inbetween_noise=FLAGS.inbetween_noise,
+                real=FLAGS.real_patterns)
         inputs = tf.unpack(inputs)
 
     print('{:-^60}'.format('getting model'), end='', flush=True)
-    with tf.variable_scope('model', initializer=mrnn.init.orthonormal_init()):
+    with tf.variable_scope('model'):
         cell = get_cell()
-        if FLAGS.task == 'recall':
+        if FLAGS.task == 'recall' or FLAGS.task == 'continuous':
             num_outputs = FLAGS.dimensionality
         elif FLAGS.task == 'order':
             num_outputs = FLAGS.num_items
@@ -106,13 +130,30 @@ def main(_):
             loss_op = tf.reduce_mean(
                 tf.nn.sparse_softmax_cross_entropy_with_logits(
                     logits[-1], targets))
+            image_summarise([tf.nn.softmax(logit) for logit in logits],
+                            'output')
+
+            predictions = tf.argmax(logits[-1], 1)
+            accuracy = tf.contrib.metrics.accuracy(predictions,
+                                                   targets)
+            tf.scalar_summary('accuracy', accuracy)
+        elif FLAGS.task == 'continuous':
+            # let's try sigmoid xent for now
+            # loss_op = tf.reduce_mean(
+            #     tf.pack([tf.nn.sigmoid_cross_entropy_with_logits(
+            #         logit, target)
+            #              for logit, target in zip(logits, targets)]))
+            # image_summarise([tf.nn.sigmoid(logit) for logit in logits],
+            #                 'output')
+            loss_op = tf.reduce_mean(
+                tf.pack([tf.squared_difference(logit, target)
+                         for logit, target in zip(logits, targets)]))
+            image_summarise([logit for logit in logits],
+                            'output')
         else:
             raise ValueError('unknown task {}'.format(FLAGS.task))
 
         tf.scalar_summary('loss', loss_op)
-        accuracy = tf.contrib.metrics.accuracy(tf.argmax(logits[-1], 1),
-                                               tf.cast(targets, tf.int64))
-        tf.scalar_summary('accuracy', accuracy)
         global_step = tf.Variable(0, name='global_step', trainable=False)
         if FLAGS.decay != 1.0:
             learning_rate = tf.train.exponential_decay(
@@ -120,17 +161,20 @@ def main(_):
                 FLAGS.decay, staircase=False)
         else:
             learning_rate = FLAGS.learning_rate
-
-        # opt = tf.train.AdamOptimizer(learning_rate, beta1=0.9, beta2=0.999,
+        # opt = tf.train.AdamOptimizer(learning_rate, beta1=0.9, beta2=0.99,
         #                              epsilon=1e-8)
+        reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+        if reg_losses:
+            loss += tf.add_n(reg_losses)
         opt = tf.train.RMSPropOptimizer(learning_rate)
         grads_and_vars = opt.compute_gradients(loss_op,
                                                tf.trainable_variables())
-        cgrads, gnorm = tf.clip_by_global_norm([grad for grad, _ in grads_and_vars],
-                                             FLAGS.max_grad_norm)
+        cgrads, gnorm = tf.clip_by_global_norm(
+            [grad for grad, _ in grads_and_vars], FLAGS.max_grad_norm)
         tf.scalar_summary('gnorm', gnorm)
-        train_op = opt.apply_gradients([(grad, var) for grad, (_, var) in zip(cgrads, grads_and_vars)],
-                                       global_step=global_step)
+        train_op = opt.apply_gradients(
+            [(grad, var) for grad, (_, var) in zip(cgrads, grads_and_vars)],
+            global_step=global_step)
     print('\r{:~^60}'.format('got train ops'))
 
     all_summaries = tf.merge_all_summaries()
