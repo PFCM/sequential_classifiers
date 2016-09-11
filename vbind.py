@@ -38,6 +38,7 @@ flags.DEFINE_integer('num_items', 1, 'how many things to remember')
 flags.DEFINE_integer('dimensionality', 8, 'size of patterns')
 flags.DEFINE_integer('offset', 0, '1 or 0, whether to try remember the'
                      'current pattern or the following one')
+flags.DEFINE_bool('inbetween_noise', False, 'what is in between the patterns')
 
 FLAGS = flags.FLAGS
 
@@ -76,7 +77,7 @@ def main(_):
         inputs, targets = data.get_recognition_tensors(
             FLAGS.batch_size, FLAGS.sequence_length, FLAGS.num_items,
             FLAGS.dimensionality, FLAGS.task, FLAGS.offset,
-            inbetween_noise=False)
+            inbetween_noise=FLAGS.inbetween_noise)
         inputs = tf.unpack(inputs)
 
     print('{:-^60}'.format('getting model'), end='', flush=True)
@@ -89,7 +90,7 @@ def main(_):
         _, _, logits, outputs = sm.inference(
             inputs, 1, cell, num_outputs, do_projection=False,
             full_logits=True, dynamic_iterations=FLAGS.dynamic_iterations)
-        image_summarise([tf.nn.softmax(logit) for logit in logits], 
+        image_summarise([tf.nn.softmax(logit) for logit in logits],
                         'output')
         image_summarise(outputs, 'states')
         image_summarise(inputs, 'inputs')
@@ -107,7 +108,7 @@ def main(_):
                     logits[-1], targets))
         else:
             raise ValueError('unknown task {}'.format(FLAGS.task))
-        
+
         tf.scalar_summary('loss', loss_op)
         accuracy = tf.contrib.metrics.accuracy(tf.argmax(logits[-1], 1),
                                                tf.cast(targets, tf.int64))
@@ -119,9 +120,9 @@ def main(_):
                 FLAGS.decay, staircase=False)
         else:
             learning_rate = FLAGS.learning_rate
-        
-        # opt = tf.train.AdamOptimizer(learning_rate, beta1=0.99, beta2=0.999,
-        #                             epsilon=1e-10)
+
+        # opt = tf.train.AdamOptimizer(learning_rate, beta1=0.9, beta2=0.999,
+        #                              epsilon=1e-8)
         opt = tf.train.RMSPropOptimizer(learning_rate)
         grads_and_vars = opt.compute_gradients(loss_op,
                                                tf.trainable_variables())
@@ -131,7 +132,7 @@ def main(_):
         train_op = opt.apply_gradients([(grad, var) for grad, (_, var) in zip(cgrads, grads_and_vars)],
                                        global_step=global_step)
     print('\r{:~^60}'.format('got train ops'))
-    
+
     all_summaries = tf.merge_all_summaries()
     writer = tf.train.SummaryWriter(FLAGS.results_dir)
     sess = tf.Session()
