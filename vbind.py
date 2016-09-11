@@ -111,8 +111,6 @@ def main(_):
         _, _, logits, outputs = sm.inference(
             inputs, 1, cell, num_outputs, do_projection=False,
             full_logits=True, dynamic_iterations=FLAGS.dynamic_iterations)
-        image_summarise([tf.nn.softmax(logit) for logit in logits],
-                        'output')
         image_summarise(outputs, 'states')
         image_summarise(inputs, 'inputs')
     print('\r{:~^60}'.format('got model'))
