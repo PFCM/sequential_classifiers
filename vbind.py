@@ -141,7 +141,7 @@ def main(_):
             image_summarise([tf.nn.sigmoid(logit) for logit in logits],
                             'output')
             # loss_op = tf.reduce_mean(
-            #     tf.pack([tf.squared_difference(tf.minimum(tf.maximum(logit, 0), 1), target)
+            #     tf.pack([tf.squared_difference(logit, target)
             #              for logit, target in zip(logits, targets)]))
             # image_summarise([logit for logit in logits],
             #                 'output')
