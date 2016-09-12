@@ -134,17 +134,17 @@ def main(_):
             tf.scalar_summary('accuracy', accuracy)
         elif FLAGS.task == 'continuous':
             # let's try sigmoid xent for now
-            # loss_op = tf.reduce_mean(
-            #     tf.pack([tf.nn.sigmoid_cross_entropy_with_logits(
-            #         logit, target)
-            #              for logit, target in zip(logits, targets)]))
-            # image_summarise([tf.nn.sigmoid(logit) for logit in logits],
-            #                 'output')
             loss_op = tf.reduce_mean(
-                tf.pack([tf.squared_difference(logit, target)
+                tf.pack([tf.nn.sigmoid_cross_entropy_with_logits(
+                    logit, target)
                          for logit, target in zip(logits, targets)]))
-            image_summarise([logit for logit in logits],
+            image_summarise([tf.nn.sigmoid(logit) for logit in logits],
                             'output')
+            # loss_op = tf.reduce_mean(
+            #     tf.pack([tf.squared_difference(tf.minimum(tf.maximum(logit, 0), 1), target)
+            #              for logit, target in zip(logits, targets)]))
+            # image_summarise([logit for logit in logits],
+            #                 'output')
         else:
             raise ValueError('unknown task {}'.format(FLAGS.task))
 
