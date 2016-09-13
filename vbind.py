@@ -56,7 +56,8 @@ def get_cell():
     if FLAGS.cell == 'cp-gate':
         return mrnn.CPGateCell(FLAGS.width, FLAGS.rank) #, candidate_nonlin=tf.nn.relu)
     if FLAGS.cell == 'cp-gate-combined':
-        return mrnn.CPGateCell(FLAGS.width, FLAGS.rank, separate_pad=False)
+        return mrnn.CPGateCell(FLAGS.width, FLAGS.rank, separate_pad=False,
+                               candidate_nonlin=tf.identity)
     if FLAGS.cell == 'gru':
         return tf.nn.rnn_cell.GRUCell(FLAGS.width)
     else:
@@ -134,7 +135,7 @@ def main(_):
             tf.scalar_summary('accuracy', accuracy)
         elif FLAGS.task == 'continuous':
             # let's try sigmoid xent for now
-            loss_op = tf.reduce_mean(
+            loss_op = tf.reduce_sum(
                 tf.pack([tf.nn.sigmoid_cross_entropy_with_logits(
                     logit, target)
                          for logit, target in zip(logits, targets)]))
@@ -148,7 +149,7 @@ def main(_):
         else:
             raise ValueError('unknown task {}'.format(FLAGS.task))
 
-        tf.scalar_summary('loss', loss_op)
+        tf.scalar_summary('loss', loss_op/FLAGS.batch_size)
         global_step = tf.Variable(0, name='global_step', trainable=False)
         if FLAGS.decay != 1.0:
             learning_rate = tf.train.exponential_decay(
