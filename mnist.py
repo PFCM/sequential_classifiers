@@ -60,7 +60,13 @@ def get_cell(size):
     if FLAGS.cell == 'irnn':
         return mrnn.IRNNCell(size)
     if FLAGS.cell == 'cp-gate':
-        return mrnn.CPGateCell(size, FLAGS.rank)
+        return mrnn.CPGateCell(size, FLAGS.rank, candidate_nonlin=tf.nn.relu, separate_pad=True)
+    if FLAGS.cell == 'cp-gate-combined':
+        return mrnn.CPGateCell(size, FLAGS.rank, candidate_nonlin=tf.nn.relu, separate_pad=False)
+    if FLAGS.cell == 'cp-gate-linear':
+        return mrnn.CPGateCell(size, FLAGS.rank, candidate_nonlin=tf.identity, separate_pad=True)
+    if FLAGS.cell == 'cp-gate-combined-linear':
+        return mrnn.CPGateCell(size, FLAGS.rank, candidate_nonlin=tf.identity, separate_pad=False)
     if FLAGS.cell == 'cp-relu':
         return mrnn.SimpleCPCell(size, size, FLAGS.rank,
                                  nonlinearity=tf.nn.relu,

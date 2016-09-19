@@ -31,22 +31,24 @@ args = [
     '--batch_size=100',
     '--permute=True',
     '--optimiser=adam',
-    '--weightnorm=partial'
 ]
 
 cells = [
-    'cp-loss',
+    'cp-gate-combined',
+    'cp-gate-combined-linear',
+    'cp-gate-linear'
+#    'cp-loss',
 #    'cp-del',
 #    'cp+-',
 #    'cp+',
 #    'lstm',
-#    'vanilla',
+    'vanilla',
 #    'irnn'
 ]
 
-learning_rates = ['0.01', '0.1']
-grad_norms = ['1.0', '10.0', '1000.0']
-ranks = ['1', '5', '25', '50', '75', '100']
+learning_rates = ['0.01']
+grad_norms = ['1000.0']
+ranks = ['50', '100']
 #ranks = ['150', '200']
 #ranks = ['100']
 
@@ -70,7 +72,7 @@ if len(sys.argv) == 1:  # full sequential search
         unique_args = [
             '--cell='+cell,
             '--rank='+rank,
-            '--results_dir=perms2/{}-{}'.format(cell, rank),
+            '--results_dir=mnist_perms-lineargates/{}-{}'.format(cell, rank),
             '--learning_rate=0.01',
             '--max_grad_norm=1.0']
         run_subprocess(args + unique_args)
