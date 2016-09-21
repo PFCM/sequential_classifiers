@@ -14,7 +14,7 @@ import tensorflow as tf
 import progressbar
 
 import mrnn
-import rnndatasets.addition as data
+import rnndatasets.synthetic.addition as data
 
 import sequential_model as sm
 
@@ -85,6 +85,8 @@ def get_cell(size):
         return mrnn.CPDeltaCell(size, 2, FLAGS.rank)
     if FLAGS.cell == 'cp-gate':
         return mrnn.CPGateCell(size, FLAGS.rank)
+    if FLAGS.cell == 'cp-gate-combined':
+        return mrnn.CPGateCell(size, FLAGS.rank, separate_pad=False, candidate_nonlin=tf.identity)
     if FLAGS.cell == 'vanilla-layernorm':
         return mrnn.VRNNCell(size, 2, hh_init=mrnn.init.orthonormal_init(),
                              nonlinearity=tf.nn.tanh, weightnorm='layer')
