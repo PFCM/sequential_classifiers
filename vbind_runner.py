@@ -5,13 +5,17 @@ import subprocess
 
 cells = ['gru',
          'lstm',
-         'cp-gate-combined']
-lengths = ['100', '200', '500']
-nums = ['1', '2', '3']
+         'cp-gate-combined',
+         'cp-gate']
+# lengths = ['100', '200', '500']
+lengths = ['100']
+# nums = ['1', '2', '3']
+nums = ['3']
+lrates = ['0.01', '0.001', '0.0001']
 
-grid_iter = itertools.product(cells, lengths, nums)
+grid_iter = itertools.product(cells, lengths, nums, lrates)
 
-for cell, length, num_items in grid_iter:
+for cell, length, num_items, lr in grid_iter:
     for i in range(5):
         results_dir = os.path.join(
             'cont_grid',
@@ -27,7 +31,7 @@ for cell, length, num_items in grid_iter:
                 '--task=continuous',
                 '--batch_size=32',
                 '--num_steps=5000',
-                '--learning_rate=0.01',
+                '--learning_rate={}'.format(lr),
                 '--cell={}'.format(cell),
                 '--sequence_length={}'.format(length),
                 '--num_items={}'.format(num_items),
