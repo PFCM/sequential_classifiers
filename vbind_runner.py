@@ -21,6 +21,7 @@ for cell, length, num_items, lr in grid_iter:
             '../2017/variable_binding',
             '{}x{}'.format(length, num_items),
             cell,
+            lr,
             '{}'.format(i))
         os.makedirs(results_dir)
         width = int(num_items)*10
