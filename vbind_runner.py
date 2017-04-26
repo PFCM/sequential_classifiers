@@ -18,9 +18,9 @@ grid_iter = itertools.product(cells, lengths, nums, lrates)
 for cell, length, num_items, lr in grid_iter:
     for i in range(5):
         results_dir = os.path.join(
-            'cont_grid',
+            '../2017/variable_binding',
             '{}x{}'.format(length, num_items),
-            'cell',
+            cell,
             '{}'.format(i))
         os.makedirs(results_dir)
         width = int(num_items)*10
@@ -30,7 +30,7 @@ for cell, length, num_items, lr in grid_iter:
                 '--rank={}'.format(width),
                 '--task=continuous',
                 '--batch_size=32',
-                '--num_steps=5000',
+                '--num_steps=50000',
                 '--learning_rate={}'.format(lr),
                 '--cell={}'.format(cell),
                 '--sequence_length={}'.format(length),

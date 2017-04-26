@@ -67,10 +67,10 @@ def get_cell():
 def image_summarise(data, tag):
     """Makes image summaries of a seq_len list of batch_size x features
     tensors"""
-    image_data = tf.pack(data)
+    image_data = tf.stack(data)
     image_data = tf.transpose(image_data, [1, 2, 0])
     image_data = tf.expand_dims(image_data, -1)
-    tf.image_summary(tag, image_data)
+    tf.summary.image(tag, image_data)
 
 
 def orthogonal_regularizer(amount):
@@ -92,7 +92,7 @@ def main(_):
                 FLAGS.batch_size, FLAGS.sequence_length, FLAGS.num_items,
                 FLAGS.dimensionality, real_patterns=FLAGS.real_patterns,
                 max_keep_length=FLAGS.max_keep)
-            targets = tf.unpack(targets)
+            targets = tf.unstack(targets)
             image_summarise(targets, 'targets')
         else:
             inputs, targets = data.get_recognition_tensors(
@@ -100,7 +100,7 @@ def main(_):
                 FLAGS.dimensionality, FLAGS.task, FLAGS.offset,
                 inbetween_noise=FLAGS.inbetween_noise,
                 real=FLAGS.real_patterns)
-        inputs = tf.unpack(inputs)
+        inputs = tf.unstack(inputs)
 
     print('{:-^60}'.format('getting model'), end='', flush=True)
     with tf.variable_scope('model'):
@@ -121,23 +121,23 @@ def main(_):
         if FLAGS.task == 'recall':
             loss_op = tf.reduce_mean(
                 tf.nn.sigmoid_cross_entropy_with_logits(
-                    logits[-1], targets))
+                    logits=logits[-1], labels=targets))
         elif FLAGS.task == 'order':
             loss_op = tf.reduce_mean(
                 tf.nn.sparse_softmax_cross_entropy_with_logits(
-                    logits[-1], targets))
+                    logits=logits[-1], labels=targets))
             image_summarise([tf.nn.softmax(logit) for logit in logits],
                             'output')
 
             predictions = tf.argmax(logits[-1], 1)
             accuracy = tf.contrib.metrics.accuracy(predictions,
                                                    targets)
-            tf.scalar_summary('accuracy', accuracy)
+            tf.summary.scalar('accuracy', accuracy)
         elif FLAGS.task == 'continuous':
             # let's try sigmoid xent for now
             loss_op = tf.reduce_sum(
-                tf.pack([tf.nn.sigmoid_cross_entropy_with_logits(
-                    logit, target)
+                tf.stack([tf.nn.sigmoid_cross_entropy_with_logits(
+                    logits=logit, labels=target)
                          for logit, target in zip(logits, targets)]))
             image_summarise([tf.nn.sigmoid(logit) for logit in logits],
                             'output')
@@ -149,7 +149,7 @@ def main(_):
         else:
             raise ValueError('unknown task {}'.format(FLAGS.task))
 
-        tf.scalar_summary('loss', loss_op/FLAGS.batch_size)
+        tf.summary.scalar('loss', loss_op/FLAGS.batch_size)
         global_step = tf.Variable(0, name='global_step', trainable=False)
         if FLAGS.decay != 1.0:
             learning_rate = tf.train.exponential_decay(
@@ -167,18 +167,18 @@ def main(_):
                                                tf.trainable_variables())
         cgrads, gnorm = tf.clip_by_global_norm(
             [grad for grad, _ in grads_and_vars], FLAGS.max_grad_norm)
-        tf.scalar_summary('gnorm', gnorm)
+        tf.summary.scalar('gnorm', gnorm)
         train_op = opt.apply_gradients(
             [(grad, var) for grad, (_, var) in zip(cgrads, grads_and_vars)],
             global_step=global_step)
     print('\r{:~^60}'.format('got train ops'))
 
-    all_summaries = tf.merge_all_summaries()
-    writer = tf.train.SummaryWriter(FLAGS.results_dir)
+    all_summaries = tf.summary.merge_all()
+    writer = tf.summary.FileWriter(FLAGS.results_dir)
     sess = tf.Session()
 
     print('{:-^60}'.format('initialising'), end='', flush=True)
-    sess.run(tf.initialize_all_variables())
+    sess.run(tf.global_variables_initializer())
     print('\r{:~^60}'.format('initialised'))
 
     for step in range(FLAGS.num_steps):
