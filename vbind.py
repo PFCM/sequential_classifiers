@@ -49,17 +49,17 @@ FLAGS = flags.FLAGS
 def get_cell():
     """Gets a cell"""
     if FLAGS.cell == 'lstm':
-        return tf.nn.rnn_cell.BasicLSTMCell(
+        return tf.contrib.rnn.BasicLSTMCell(
             FLAGS.width, state_is_tuple=True)
     if FLAGS.cell == 'vanilla':
-        return tf.nn.rnn_cell.BasicRNNCell(FLAGS.width)
+        return tf.contrib.rnn.BasicRNNCell(FLAGS.width)
     if FLAGS.cell == 'cp-gate':
         return mrnn.CPGateCell(FLAGS.width, FLAGS.rank) #, candidate_nonlin=tf.nn.relu)
     if FLAGS.cell == 'cp-gate-combined':
         return mrnn.CPGateCell(FLAGS.width, FLAGS.rank, separate_pad=False,
                                candidate_nonlin=tf.identity)
     if FLAGS.cell == 'gru':
-        return tf.nn.rnn_cell.GRUCell(FLAGS.width)
+        return tf.contrib.rnn.GRUCell(FLAGS.width)
     else:
         raise ValueError('I do not know this: {}'.format(FLAGS.cell))
 
