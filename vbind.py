@@ -91,7 +91,8 @@ def main(_):
             inputs, targets = data.get_continuous_binding_tensors(
                 FLAGS.batch_size, FLAGS.sequence_length, FLAGS.num_items,
                 FLAGS.dimensionality, real_patterns=FLAGS.real_patterns,
-                max_keep_length=FLAGS.max_keep)
+                max_keep_length=FLAGS.max_keep,
+                inbetween_noise=FLAGS.inbetween_noise)
             targets = tf.unstack(targets)
             image_summarise(targets, 'targets')
         else:

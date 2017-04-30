@@ -3,15 +3,15 @@ import os
 import shutil
 import subprocess
 
-cells = ['gru',
-         'lstm',
+cells = [#'gru',
+         #'lstm',
          'cp-gate-combined',
          'cp-gate']
 # lengths = ['100', '200', '500']
 lengths = ['100']
 # nums = ['1', '2', '3']
 nums = ['3']
-lrates = ['0.01', '0.001', '0.0001']
+lrates = ['0.01']  #, '0.001', '0.0001']
 
 grid_iter = itertools.product(cells, lengths, nums, lrates)
 
@@ -30,8 +30,9 @@ for cell, length, num_items, lr in grid_iter:
                 '--width={}'.format(width),
                 '--rank={}'.format(width),
                 '--task=continuous',
+                '--inbetween_noise=True',
                 '--batch_size=32',
-                '--num_steps=50000',
+                '--num_steps=20000',
                 '--learning_rate={}'.format(lr),
                 '--cell={}'.format(cell),
                 '--sequence_length={}'.format(length),
