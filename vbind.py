@@ -57,9 +57,13 @@ def get_cell():
         return mrnn.CPGateCell(FLAGS.width, FLAGS.rank) #, candidate_nonlin=tf.nn.relu)
     if FLAGS.cell == 'cp-gate-combined':
         return mrnn.CPGateCell(FLAGS.width, FLAGS.rank, separate_pad=False,
-                               candidate_nonlin=tf.identity)
+                               candidate_nonlin=tf.nn.relu)
     if FLAGS.cell == 'gru':
         return tf.contrib.rnn.GRUCell(FLAGS.width)
+    if FLAGS.cell == 'tgu':
+        return mrnn.FullTGUCell(FLAGS.width, FLAGS.rank, separate_pad=True)
+    if FLAGS.cell == 'tgu-combined':
+        return mrnn.FullTGUCell(FLAGS.width, FLAGS.rank, separate_pad=False)
     else:
         raise ValueError('I do not know this: {}'.format(FLAGS.cell))
 
