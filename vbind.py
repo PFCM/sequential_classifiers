@@ -62,6 +62,8 @@ def get_cell():
         return tf.contrib.rnn.GRUCell(FLAGS.width)
     if FLAGS.cell == 'tgu':
         return mrnn.FullTGUCell(FLAGS.width, FLAGS.rank, separate_pad=True)
+    if FLAGS.cell == 'tguv2':
+        return mrnn.FullTGUCell(FLAGS.width, FLAGS.rank, separate_pad=True, v2=True)
     if FLAGS.cell == 'tgu-combined':
         return mrnn.FullTGUCell(FLAGS.width, FLAGS.rank, separate_pad=False)
     else:
